@@ -1,0 +1,9 @@
+package ilex-xml
+version   = 0.1.0
+authors   = "Matthew-Mosior"
+sourcedir = "src"
+depends   = ilex
+
+brief     = "Stack-safe and efficient parser for the Extensible Markup Language (XML) 1.0."
+
+modules   = XML.Parser
