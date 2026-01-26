@@ -21,7 +21,7 @@ data FASTAValue : Type where
   NL      : FASTAValue
   FHeader : String -> FASTAValue
   FData   : String -> FASTAValue
-  
+
 %runElab derive "FASTAValue" [Show,Eq]
 
 --------------------------------------------------------------------------------
@@ -154,7 +154,7 @@ fastaErr =
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FNL of
+  case st == FIni of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
       _     <- onNL
