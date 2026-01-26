@@ -1,0 +1,9 @@
+package ilex-fasta
+version   = 0.1.0
+authors   = "Matthew-Mosior"
+sourcedir = "src"
+depends   = ilex
+
+brief     = "Stack-safe and efficient parser for the FASTA format."
+
+modules   = FASTA.Parser
