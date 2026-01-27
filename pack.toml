@@ -33,6 +33,12 @@ type = "local"
 path = "profile"
 ipkg = "profile.ipkg"
 
+[custom.all.ilex-fasta]
+type = "local"
+path = "fasta"
+ipkg = "ilex-fasta.ipkg"
+test = "test/test.ipkg"
+
 [custom.all.ilex-json]
 type = "local"
 path = "json"
