@@ -149,13 +149,13 @@ fastaErr =
   arr32 FSz (unexpected [])
     [ E FIni $ unexpected ["no data"]
     , E FNL $ unclosed "\""
-    , E FHdr $ unexpected ["^[^>]"]
+    , E FHdr $ unexpected ["no sequence line(s)"]
     , E FD $ unexpected ["^[ATGC]"]
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FIni of
+  case st == FHdr of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
       _     <- onNL
