@@ -140,8 +140,8 @@ fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
     [ E FIni fastaDflt
-    , E FHdr $ dfa [conv linebreak (const onNL)]
-    , E FD $ dfa [conv linebreak (const onNL)]
+    , E FHdr fastaDflt
+    , E FD fastaDflt
     ]
 
 fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
