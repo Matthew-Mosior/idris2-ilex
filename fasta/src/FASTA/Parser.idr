@@ -147,8 +147,7 @@ fastaSteps =
 fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
 fastaErr =
   arr32 FSz (unexpected [])
-    [ E FIni $ unexpected ["no data"]
-    , E FNL $ unclosed "\""
+    [ E FNL $ unclosed "\""
     , E FHdr $ unexpected ["no sequence line(s)"]
     , E FD $ unexpected ["^[ATGC]"]
     ]
