@@ -128,7 +128,7 @@ onFHNL = T1.do
   _ <- getList x.headerline | [] => arrFail FSTCK fastaErr st x
   pure (Right FSIni)
 
-onFSNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
+onFSNL : (x : FSTCK q) => F1 q FST
 onFSNL = T1.do
   incline 1
   svs@(_::_) <- getList x.sequencevalues | [] => pure FSIni
