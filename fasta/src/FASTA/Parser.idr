@@ -110,28 +110,24 @@ fastainit = T1.do
   pure (F l c bs ss er hvs svs sls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FHIni", "FHCAB", "FHVal", "FHNL", "FSIni", "FSVal", "FSNL", "FSDone"]
+  ["FHIni", "FSIni"]
 
 --------------------------------------------------------------------------------
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onHeaderValue : (x : FSTCK q) => HeaderValue -> F1 q FST
-onHeaderValue v = push1 x.headerline v >> pure FHVal
-
-onSequenceValue : (x : FSTCK q) => SequenceValue -> F1 q FST
-onSequenceValue v = push1 x.sequencevalues v >> pure FSVal 
-
-onFHNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
-onFHNL = T1.do
+onFHL : (x : FSTCK q) => HeaderValue -> F1 q (Either (BoundedErr Void) FST)
+onFHL x v = T1.do
+  push1 x.headerline v
   incline 1
-  _ <- getList x.headerline | [] => arrFail FSTCK fastaErr st x
+  _ <- getList x.headerline | [] => arrFail FSTCK fastaErr FHIni x
   pure (Right FSIni)
 
-onFSNL : (x : FSTCK q) => F1 q FST
-onFSNL = T1.do
+onFSL : (x : FSTCK q) => SequenceValue -> F1 q (Either (BoundedErr Void) FST)
+onFSL x v = T1.do
+  push1 x.sequencevalues v
   incline 1
-  svs@(_::_) <- getList x.sequencevalues | [] => pure FSIni
+  svs@(_::_) <- getList x.sequencevalues | [] => arrFail FSTCK fastaErr FSIni x
   ln <- read1 x.line
   push1 x.sequencelines svs
   pure FSIni
@@ -139,31 +135,27 @@ onFSNL = T1.do
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
   dfa
-    [ conv linebreak (\_ => onFHNL)
-    , conv linebreak (\_ => onFSNL)
-    , read ('>' >> plus (dot && not linebreak)) (onHeaderValue . HV)
-    , read (plus (nucleotide && not '>' && not linebreak)) (onSequenceValue . SV)
+    [ read ('>' >> plus $ dot && not linebreak >> linebreak) onFHL
+    , read (plus $ dot && nucleotide && not '>' && not linebreak >> linebreak) onFSL
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
-    [ E FIni fastaDflt
-    , E FHdr fastaDflt
-    , E FD fastaDflt
+    [ E FHIni fastaDflt
+    , E FSIni fastaDflt
     ]
 
 fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
 fastaErr =
   arr32 FSz (unexpected [])
-    [ E FNL $ unclosed "\""
-    , E FHdr $ unexpected ["no sequence line(s)"]
-    , E FD $ unexpected ["^[ATGC]"]
+    [ E FHIni $ unexpected ["no header line"]
+    , E FSIni $ unexpected ["no sequence line(s)"]
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == CAB || st == HV || st == HNL of
+  case st == FHIni of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
       _        <- onFSNL
