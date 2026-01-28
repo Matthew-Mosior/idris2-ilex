@@ -2,6 +2,7 @@ module FASTA.Parser
 
 import Data.Bits
 import Data.Buffer
+import Data.ByteString
 import Data.Linear.Ref1
 import Derive.Prelude
 import Syntax.T1
@@ -12,14 +13,15 @@ import public Text.ILex
 %default total
 %language ElabReflection
 
+%hide Data.Linear.(.)
+
 --------------------------------------------------------------------------------
 --          HeaderValue
 --------------------------------------------------------------------------------
 
 public export
 data HeaderValue : Type where
-  HNL : HeaderValue
-  HV  : String -> HeaderValue
+  HV  : ByteString -> HeaderValue
 
 %runElab derive "HeaderValue" [Show,Eq]
 
@@ -29,8 +31,7 @@ data HeaderValue : Type where
 
 public export
 data SequenceValue : Type where
-  SNL : SequenceValue
-  SV  : String -> SequenceValue
+  SV  : ByteString -> SequenceValue
 
 %runElab derive "SequenceValue" [Show,Eq]
 
@@ -49,7 +50,7 @@ SequenceValues = List SequenceValue
 public export
 record FASTA where
   constructor MkFASTA
-  headerline    : List HeaderValue
+  headerline    : HeaderValue
   sequencelines : List SequenceValues
 
 %runElab derive "FASTA" [Show,Eq]
@@ -77,9 +78,8 @@ record FSTCK (q : Type) where
   col            : Ref q Nat
   psns           : Ref q (SnocList Position)
   err            : Ref q (Maybe $ BoundedErr Void)
-  headerline     : Ref q (SnocList HeaderValue)
-  sequencevalues : Ref q (SnocList SequenceValue)
-  sequencelines  : Req q (SnocList SequenceValues)
+  headerline     : Ref q (Maybe HeaderValue)
+  sequencelines  : Ref q (SnocList SequenceValues)
   bytes          : Ref q ByteString
 
 export %inline
@@ -103,14 +103,26 @@ fastainit = T1.do
   c  <- ref1 Z
   bs <- ref1 [<]
   er <- ref1 Nothing
-  hvs <- ref1 [<]
-  svs <- ref1 [<]
+  hl <- ref1 Nothing
   sls <- ref1 [<]
   by <- ref1 ""
-  pure (F l c bs ss er hvs svs sls by)
+  pure (F l c bs er hl sls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FHIni", "FSIni"]
+  ["FHIni", "FHNC", "FSIni", "FSNC"]
+
+--------------------------------------------------------------------------------
+--          Errors
+--------------------------------------------------------------------------------
+
+fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
+fastaErr =
+  arr32 FSz (unexpected [])
+    [ E FHIni $ unexpected ["no header line"]
+    , E FHNC $ unexpected ["can't convert to List1"]
+    , E FSIni $ unexpected ["no sequence line(s)"]
+    , E FSNC $ unexpected ["can't convert to List1"]
+    ]
 
 --------------------------------------------------------------------------------
 --          State Transitions
@@ -118,25 +130,25 @@ fastainit = T1.do
 
 onFHL : (x : FSTCK q) => HeaderValue -> F1 q (Either (BoundedErr Void) FST)
 onFHL x v = T1.do
-  push1 x.headerline v
+  Just vwithoutnl <- Data.ByteString.init v
+    | Nothing => arrFail FSTCK fastaErr FHNC x
+  push1 x.headerline (Just vwithoutnl)
   incline 1
-  _ <- getList x.headerline | [] => arrFail FSTCK fastaErr FHIni x
   pure (Right FSIni)
 
 onFSL : (x : FSTCK q) => SequenceValue -> F1 q (Either (BoundedErr Void) FST)
 onFSL x v = T1.do
-  push1 x.sequencevalues v
+  Just vwithoutnl <- pure (Data.ByteString.init v)
+    | Nothing => arrFail FSTCK fastaErr FSNC x
+  push1 x.sequencelines vwithoutnl
   incline 1
-  svs@(_::_) <- getList x.sequencevalues | [] => arrFail FSTCK fastaErr FSIni x
-  ln <- read1 x.line
-  push1 x.sequencelines svs
-  pure FSIni
+  pure (Right FSIni)
 
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
   dfa
-    [ read ('>' >> plus $ dot && not linebreak >> linebreak) onFHL
-    , read (plus $ dot && nucleotide && not '>' && not linebreak >> linebreak) onFSL
+    [ conv ('>' >> plus $ dot && not linebreak >> linebreak) (onFHL . HV)
+    , conv (plus $ nucleotide && not '>' && not linebreak >> linebreak) (onFSL . SV)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
@@ -146,22 +158,12 @@ fastaSteps =
     , E FSIni fastaDflt
     ]
 
-fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
-fastaErr =
-  arr32 FSz (unexpected [])
-    [ E FHIni $ unexpected ["no header line"]
-    , E FSIni $ unexpected ["no sequence line(s)"]
-    ]
-
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
-fastaEOI st x =
-  case st == FHIni of
-    True  => arrFail FSTCK fastaErr st x
-    False => T1.do
-      _        <- onFSNL
-      hdrline  <- getList x.headerline
-      seqlines <- getList x.sequencelines
-      pure (Right $ MkFASTA hdrline seqlines)
+fastaEOI st x = T1.do
+  Just hdrline <- read1 x.headerline
+    | Nothing => arrFail FSTCK fastaErr FHIni x
+  seqlines <- getList x.sequencelines
+  pure (Right (MkFASTA hdrline seqlines))
 
 --------------------------------------------------------------------------------
 --          Parser
