@@ -19,7 +19,6 @@ import public Text.ILex
 public export
 data HeaderValue : Type where
   HNL : HeaderValue
-  CAB : String -> HeaderValue
   HV  : String -> HeaderValue
 
 %runElab derive "HeaderValue" [Show,Eq]
@@ -111,40 +110,38 @@ fastainit = T1.do
   pure (F l c bs ss er hvs svs sls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FHIni", "FHCAB", "FHVal", "FHNL", "FHDone", "FSIni", "FSVal", "FSNL", "FSDone"]
+  ["FHIni", "FHCAB", "FHVal", "FHNL", "FSIni", "FSVal", "FSNL", "FSDone"]
 
 --------------------------------------------------------------------------------
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
+onHeaderValue : (x : FSTCK q) => HeaderValue -> F1 q FST
+onHeaderValue v = push1 x.headerline v >> pure FHVal
 
-onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFD v = push1 x.fastavalues v >> pure FD
+onSequenceValue : (x : FSTCK q) => SequenceValue -> F1 q FST
+onSequenceValue v = push1 x.sequencevalues v >> pure FSVal 
 
 onFHNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onFHNL = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FHDone
-  ln <- read1 x.line
-  push1 x.fastalines (MkFASTALine ln fvs)
-  pure FSIni
+  _ <- getList x.headerline | [] => arrFail FSTCK fastaErr st x
+  pure (Right FSIni)
 
 onFSNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onFSNL = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FSIni
+  svs@(_::_) <- getList x.sequencevalues | [] => pure FSIni
   ln <- read1 x.line
-  push1 x.fastalines (MkFASTALine ln fvs)
+  push1 x.sequencelines svs
   pure FSIni
 
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
   dfa
     [ conv linebreak (\_ => onNL)
-    , read ('>' >> plus (dot && not linebreak)) (onFASTAValueFHdr . FHeader)
-    , read (plus (nucleotide && not '>' && not linebreak)) (onFASTAValueFD . FData)
+    , read ('>' >> plus (dot && not linebreak)) (onHeaderValue . HV)
+    , read (plus (nucleotide && not '>' && not linebreak)) (onSequenceValue . SV)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
@@ -178,4 +175,4 @@ fastaEOI st x =
 --------------------------------------------------------------------------------
 
 fasta : P1 q (BoundedErr Void) FSz FSTCK FASTA
-fasta = P FIni fastainit fastaSteps snocChunk fastaErr fastaEOI
+fasta = P FHIni fastainit fastaSteps snocChunk fastaErr fastaEOI
