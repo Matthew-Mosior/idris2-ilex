@@ -153,8 +153,8 @@ onFSL x v = T1.do
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
   dfa
-    [ conv ('>' >> plus $ dot && not linebreak >> linebreak) (onFHL . HV)
-    , conv (plus $ nucleotide && not '>' && not linebreak >> linebreak) (onFSL . SV)
+    [ read ('>' >> plus $ not linebreak >> linebreak) (onFHL . HV)
+    , read (plus $ nucleotide && not '>' && not linebreak >> linebreak) (onFSL . SV)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
