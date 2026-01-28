@@ -13,38 +13,49 @@ import public Text.ILex
 %language ElabReflection
 
 --------------------------------------------------------------------------------
---          FASTAValue
+--          HeaderValue
 --------------------------------------------------------------------------------
 
 public export
-data FASTAValue : Type where
-  NL      : FASTAValue
-  FHeader : String -> FASTAValue
-  FData   : String -> FASTAValue
+data HeaderValue : Type where
+  NL  : HeaderValue
+  CAB : String -> HeaderValue
+  HV  : String -> HeaderValue
 
-%runElab derive "FASTAValue" [Show,Eq]
+%runElab derive "HeaderValue" [Show,Eq]
 
 --------------------------------------------------------------------------------
---          FASTALine
+--          SequenceValue
 --------------------------------------------------------------------------------
 
 public export
-record FASTALine where
-  constructor MkFASTALine
-  nr     : Nat
-  values : List FASTAValue
+data SequenceValue : Type where
+  NL         : SequenceValue
+  Nucleotide : String -> SequenceValue
 
-%runElab derive "FASTALine" [Show,Eq]
+%runElab derive "SequenceValue" [Show,Eq]
 
-Interpolation FASTALine where interpolate = show
+--------------------------------------------------------------------------------
+--          SequenceValues
+--------------------------------------------------------------------------------
+
+public export
+0 SequenceValues : Type
+SequenceValues = List SequenceValue
 
 --------------------------------------------------------------------------------
 --          FASTA
 --------------------------------------------------------------------------------
 
 public export
-0 FASTA : Type
-FASTA = List FASTALine
+record FASTA where
+  constructor MkFASTA
+  headerline    : List HeaderValue
+  sequencelines : List SequenceValues
+
+%runElab derive "FASTA" [Show,Eq]
+
+Interpolation FASTA where interpolate = show
 
 --------------------------------------------------------------------------------
 --          RExp
@@ -63,14 +74,14 @@ nucleotide = 'A' <|> 'T' <|> 'G' <|> 'C'
 public export
 record FSTCK (q : Type) where
   constructor F
-  line        : Ref q Nat
-  col         : Ref q Nat
-  psns        : Ref q (SnocList Position)
-  strs        : Ref q (SnocList String)
-  err         : Ref q (Maybe $ BoundedErr Void)
-  fastavalues : Ref q (SnocList FASTAValue)
-  fastalines  : Ref q (SnocList FASTALine)
-  bytes       : Ref q ByteString
+  line           : Ref q Nat
+  col            : Ref q Nat
+  psns           : Ref q (SnocList Position)
+  err            : Ref q (Maybe $ BoundedErr Void)
+  headervalues   : Ref q (SnocList HeaderValue)
+  sequencevalues : Ref q (SnocList SequenceValue)
+  sequencelines  : Req q (SnocList SequenceValues)
+  bytes          : Ref q ByteString
 
 export %inline
 HasPosition FSTCK where
@@ -81,10 +92,6 @@ HasPosition FSTCK where
 export %inline
 HasError FSTCK Void where
   error = err
-
-export %inline
-HasStringLits FSTCK where
-  strings = strs
 
 export %inline
 HasStack FSTCK (SnocList FASTALine) where
@@ -100,12 +107,12 @@ fastainit = T1.do
   l  <- ref1 Z
   c  <- ref1 Z
   bs <- ref1 [<]
-  ss <- ref1 [<]
   er <- ref1 Nothing
-  fvs <- ref1 [<]
-  fls <- ref1 [<]
+  hvs <- ref1 [<]
+  svs <- ref1 [<]
+  sls <- ref1 [<]
   by <- ref1 ""
-  pure (F l c bs ss er fvs fls by)
+  pure (F l c bs ss er hvs svs sls by)
 
 %runElab deriveParserState "FSz" "FST"
   ["FIni", "FHdr", "FD", "FNL", "FDone"]
@@ -120,10 +127,12 @@ onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
 onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueFD v = push1 x.fastavalues v >> pure FD
 
-onNL : (x : FSTCK q) => F1 q FST
+onNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onNL = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FIni
+  [] <- getList x.fastavalues
+    |
+  --fvs@(_::_) <- getList x.fastavalues | [] => pure FIni
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
   pure FIni
