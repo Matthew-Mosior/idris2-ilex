@@ -94,8 +94,8 @@ HasError FSTCK Void where
   error = err
 
 export %inline
-HasStack FSTCK (SnocList FASTALine) where
-  stack = fastalines
+HasStack FSTCK (SnocList SequenceValues) where
+  stack = sequencelines
 
 export %inline
 HasBytes FSTCK where
