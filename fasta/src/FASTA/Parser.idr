@@ -123,15 +123,21 @@ onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
 onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueFD v = push1 x.fastavalues v >> pure FD
 
-onNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
-onNL = T1.do
+onFHNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
+onFHNL = T1.do
   incline 1
-  [] <- getList x.fastavalues
-    |
-  --fvs@(_::_) <- getList x.fastavalues | [] => pure FIni
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FHDone
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
-  pure FIni
+  pure FSIni
+
+onFSNL : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
+onFSNL = T1.do
+  incline 1
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FSIni
+  ln <- read1 x.line
+  push1 x.fastalines (MkFASTALine ln fvs)
+  pure FSIni
 
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
