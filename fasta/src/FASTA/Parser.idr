@@ -139,7 +139,8 @@ onFSNL = T1.do
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
   dfa
-    [ conv linebreak (\_ => onNL)
+    [ conv linebreak (\_ => onFHNL)
+    , conv linebreak (\_ => onFSNL)
     , read ('>' >> plus (dot && not linebreak)) (onHeaderValue . HV)
     , read (plus (nucleotide && not '>' && not linebreak)) (onSequenceValue . SV)
     ]
