@@ -78,7 +78,7 @@ record FSTCK (q : Type) where
   col            : Ref q Nat
   psns           : Ref q (SnocList Position)
   err            : Ref q (Maybe $ BoundedErr Void)
-  headervalues   : Ref q (SnocList HeaderValue)
+  headerline     : Ref q (SnocList HeaderValue)
   sequencevalues : Ref q (SnocList SequenceValue)
   sequencelines  : Req q (SnocList SequenceValues)
   bytes          : Ref q ByteString
@@ -165,12 +165,13 @@ fastaErr =
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == CAB || st == HV of
+  case st == CAB || st == HV || st == HNL of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
-      _     <- onNL
-      fasta <- getList x.fastalines
-      pure (Right fasta)
+      _        <- onFSNL
+      hdrline  <- getList x.headerline
+      seqlines <- getList x.sequencelines
+      pure (Right $ MkFASTA hdrline seqlines)
 
 --------------------------------------------------------------------------------
 --          Parser
