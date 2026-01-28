@@ -30,8 +30,8 @@ data HeaderValue : Type where
 
 public export
 data SequenceValue : Type where
-  SNL        : SequenceValue
-  Nucleotide : String -> SequenceValue
+  SNL : SequenceValue
+  SV  : String -> SequenceValue
 
 %runElab derive "SequenceValue" [Show,Eq]
 
@@ -94,10 +94,6 @@ HasError FSTCK Void where
   error = err
 
 export %inline
-HasStack FSTCK (SnocList SequenceValues) where
-  stack = sequencelines
-
-export %inline
 HasBytes FSTCK where
   bytes = FSTCK.bytes
 
@@ -115,7 +111,7 @@ fastainit = T1.do
   pure (F l c bs ss er hvs svs sls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FHdr", "FD", "FNL", "FDone"]
+  ["FHIni", "FHCAB", "FHVal", "FHNL", "FHDone", "FSIni", "FSVal", "FSNL", "FSDone"]
 
 --------------------------------------------------------------------------------
 --          State Transitions
@@ -163,7 +159,7 @@ fastaErr =
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FHdr of
+  case st == CAB || st == HV of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
       _     <- onNL
