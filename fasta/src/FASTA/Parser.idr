@@ -2,8 +2,8 @@ module FASTA.Parser
 
 import Data.Bits
 import Data.Buffer
-import Data.ByteString
 import Data.Linear.Ref1
+import Data.List1
 import Derive.Prelude
 import Syntax.T1
 import Text.ILex.Derive
@@ -13,7 +13,11 @@ import public Text.ILex
 %default total
 %language ElabReflection
 
+%hide BV.unpack
+%hide Data.Array.fromList
+%hide Data.ByteString.unpack
 %hide Data.Linear.(.)
+%hide Data.Vect.fromList
 
 --------------------------------------------------------------------------------
 --          HeaderValue
@@ -21,7 +25,7 @@ import public Text.ILex
 
 public export
 data HeaderValue : Type where
-  HV  : ByteString -> HeaderValue
+  HV  : String -> HeaderValue
 
 %runElab derive "HeaderValue" [Show,Eq]
 
@@ -31,7 +35,7 @@ data HeaderValue : Type where
 
 public export
 data SequenceValue : Type where
-  SV  : ByteString -> SequenceValue
+  SV  : String -> SequenceValue
 
 %runElab derive "SequenceValue" [Show,Eq]
 
@@ -128,21 +132,23 @@ fastaErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFHL : (x : FSTCK q) => HeaderValue -> F1 q (Either (BoundedErr Void) FST)
+onFHL : (x : FSTCK q) => HeaderValue -> F1 q FST
 onFHL x v = T1.do
-  Just vwithoutnl <- Data.ByteString.init v
-    | Nothing => arrFail FSTCK fastaErr FHNC x
+  Just v' <- pure (fromList $ unpack v)
+    | Nothing => pure FHNC
+  vwithoutnl <- pure (init v')
   push1 x.headerline (Just vwithoutnl)
   incline 1
-  pure (Right FSIni)
+  pure FSIni
 
-onFSL : (x : FSTCK q) => SequenceValue -> F1 q (Either (BoundedErr Void) FST)
+onFSL : (x : FSTCK q) => SequenceValue -> F1 q FST
 onFSL x v = T1.do
-  Just vwithoutnl <- pure (Data.ByteString.init v)
-    | Nothing => arrFail FSTCK fastaErr FSNC x
+  Just v' <- pure (fromList $ unpack v)
+    | Nothing => pure FSNC
+  vwithoutnl <- pure (init v')
   push1 x.sequencelines vwithoutnl
   incline 1
-  pure (Right FSIni)
+  pure FSIni
 
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
