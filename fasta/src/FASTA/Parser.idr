@@ -18,7 +18,7 @@ import public Text.ILex
 
 public export
 data HeaderValue : Type where
-  NL  : HeaderValue
+  HNL : HeaderValue
   CAB : String -> HeaderValue
   HV  : String -> HeaderValue
 
@@ -30,7 +30,7 @@ data HeaderValue : Type where
 
 public export
 data SequenceValue : Type where
-  NL         : SequenceValue
+  SNL        : SequenceValue
   Nucleotide : String -> SequenceValue
 
 %runElab derive "SequenceValue" [Show,Eq]
