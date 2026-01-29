@@ -34,9 +34,19 @@ fastasequencedatagenlist = list (linear linelength linelength) fastasequencedata
 fastalinegen : Gen FASTALine
 fastalinegen = map (\x => MkFASTALine linelength x) (choice [fastaheadergenlist, fastasequencedatagenlist])
 
-fastagen : Gen FASTA
-fastagen = list (linear 1 500) fastalinegen
+fasta_ : Gen FASTA
+fasta_ = list (linear 1 500) fastalinegen
 
+--------------------------------------------------------------------------------
+--          Property tests
+--------------------------------------------------------------------------------
+
+prop_roundTrip : Property
+prop_roundTrip = property $ do
+  v <- forAll fasta_
+  let str : String
+      str = show v
+  parseFASTA Virtual str === Right v
 
 {-
 
@@ -255,6 +265,13 @@ properties =
     ]
 -}
 
+properties : Group
+properties =
+  MkGroup
+    "FASTA.Parser"
+    [ ("prop_roundTrip", prop_roundTrip)
+    ]
+
 main : IO ()
-main = putStrLn "haha"
---main = test [ properties ]
+--main = putStrLn "haha"
+main = test [ properties ]

@@ -165,5 +165,10 @@ fastaEOI st x =
 --          Parser
 --------------------------------------------------------------------------------
 
+export
 fasta : P1 q (BoundedErr Void) FSz FSTCK FASTA
 fasta = P FIni fastainit fastaSteps snocChunk fastaErr fastaEOI
+
+export %inline
+parseFASTA : Origin -> String -> Either (ParseError Void) FASTA
+parseFASTA = parseString fasta
