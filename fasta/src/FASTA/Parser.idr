@@ -140,7 +140,7 @@ fastaDflt : DFA q FSz FSTCK
 fastaDflt =
   dfa
     [ conv linebreak (\_ => onNL)
-    , read ('>' >> plus (dot && not linebreak)) (onFASTAValueFHdr . FHeader)
+    , read ('>' >> plus (not linebreak)) (onFASTAValueFHdr . FHeader)
     , read (plus (nucleotide && not linebreak)) (onFASTAValueFD . FData)
     ]
 
@@ -155,7 +155,8 @@ fastaSteps =
 fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
 fastaErr =
   arr32 FSz (unexpected [])
-    [ E FNL $ unclosed "\""
+    [ E FIni $ unexpected ["no data"]
+    , E FNL $ unclosed "\""
     , E FEmpty $ unexpected ["no sequence line(s)"]
     , E FHdr $ unexpected ["no sequence line(s)"]
     , E FD $ unexpected ["^[ATGC]"]
@@ -163,7 +164,7 @@ fastaErr =
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FHdr || st == FEmpty of
+  case st == FIni || st == FHdr || st == FEmpty of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
       _     <- onEOI
