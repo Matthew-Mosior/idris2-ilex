@@ -14,7 +14,7 @@ linelength : Nat
 linelength = 80
 
 headergen : Gen String
-headergen = string (linear 1 1) ascii
+headergen = constant ">"
 
 fastaheadergen : Gen FASTAValue
 fastaheadergen = map FHeader headergen
