@@ -29,7 +29,7 @@ fastasequencedatagenlist : Gen (List FASTAValue)
 fastasequencedatagenlist = list (linear 1 80) fastasequencedatagen 
 
 fastalinegen : Gen FASTALine
-fastalinegen = map (\x => MkFASTALine 80 x) (fastaheadergenlist ++ fastasequencedatagenlist)
+fastalinegen = map (\x => MkFASTALine 80 x) (choice [fastaheadergenlist, fastasequencedatagenlist])
 
 fastagen : Gen FASTA
 fastagen = list (linear 1 500) fastalinegen
