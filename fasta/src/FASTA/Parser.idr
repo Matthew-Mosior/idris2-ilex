@@ -108,7 +108,7 @@ fastainit = T1.do
   pure (F l c bs ss er fvs fls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FHdr", "FD", "FNL", "FDone"]
+  ["FIni", "FHdr", "FD", "FNL"]
 
 --------------------------------------------------------------------------------
 --          State Transitions
