@@ -108,7 +108,7 @@ fastainit = T1.do
   pure (F l c bs ss er fvs fls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FHdr", "FD", "FNL"]
+  ["FIni", "FHdr", "FD", "FNL", "FEmpty", "FDone"]
 
 --------------------------------------------------------------------------------
 --          State Transitions
@@ -123,10 +123,18 @@ onFASTAValueFD v = push1 x.fastavalues v >> pure FD
 onNL : (x : FSTCK q) => F1 q FST
 onNL = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FIni
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
-  pure FIni
+  pure FNL
+
+onEOI : (x : FSTCK q) => F1 q FST
+onEOI = T1.do
+  incline 1
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
+  ln <- read1 x.line
+  push1 x.fastalines (MkFASTALine ln fvs)
+  pure FDone
 
 fastaDflt : DFA q FSz FSTCK
 fastaDflt =
@@ -148,16 +156,17 @@ fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
 fastaErr =
   arr32 FSz (unexpected [])
     [ E FNL $ unclosed "\""
+    , E FEmpty $ unexpected ["no sequence line(s)"]
     , E FHdr $ unexpected ["no sequence line(s)"]
     , E FD $ unexpected ["^[ATGC]"]
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FHdr of
+  case st == FHdr || st == FEmpty of
     True  => arrFail FSTCK fastaErr st x
     False => T1.do
-      _     <- onNL
+      _     <- onEOI
       fasta <- getList x.fastalines
       pure (Right fasta)
 
