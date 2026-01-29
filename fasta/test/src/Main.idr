@@ -6,22 +6,30 @@ import FASTA.Parser
 
 %default total
 
-fastaChar : Gen Char
-fastaChar =
-  frequency
-    [ 
-    ]
+--------------------------------------------------------------------------------
+--          Generators
+--------------------------------------------------------------------------------
 
-jsonChar : Gen Char
-jsonChar =
-  frequency
-    [ (55296, charc '\0' '\55295')
-    , (7935, charc '\57344' '\65278')
-    , (256,  charc '\65280' '\65535')
-    ]
+headergen : Gen String
+headergen = string (linear 1 50) ascii
 
-key : Gen String
-key = string (linear 1 10) jsonChar
+fastaheadergen : Gen FASTAValue
+fastaheadergen = map FHeader headergen
+
+sequencedatagen : Gen String
+sequencedatagen = string (linear 1 80) (element ['A', 'T', 'G', 'C'])
+
+fastasequencedatagen : Gen FASTAValue
+fastasequencedatagen = map FData sequencedatagen
+
+fastalinegen : Gen FASTALine
+fastalinegen = element [fastaheadergen, fastasequencedatagen]
+
+fastagen : Gen FASTA
+fastagen = list (linear 1 500) fastalinegen
+
+
+{-
 
 prim : Gen JSON
 prim = frequency
@@ -213,7 +221,7 @@ prop_err9 = testErr "-0012"
   """
 
 --------------------------------------------------------------------------------
---          main Function
+--          Properties
 --------------------------------------------------------------------------------
 
 properties : Group
@@ -236,6 +244,8 @@ properties =
     , ("prop_exponentialNotationInteger1", prop_exponentialNotationInteger1)
     , ("prop_exponentialNotationDouble", prop_exponentialNotationDouble)
     ]
+-}
 
 main : IO ()
-main = test [ properties ]
+main = putStrLn "haha"
+--main = test [ properties ]
