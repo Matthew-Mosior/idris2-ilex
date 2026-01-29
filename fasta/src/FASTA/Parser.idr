@@ -141,7 +141,7 @@ fastaDflt =
   dfa
     [ conv linebreak (\_ => onNL)
     , read ('>' >> plus (not linebreak)) (onFASTAValueFHdr . FHeader)
-    , read (plus (nucleotide && not linebreak)) (onFASTAValueFD . FData)
+    , read (plus nucleotide) (onFASTAValueFD . FData)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
