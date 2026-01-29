@@ -131,7 +131,7 @@ onNL = T1.do
 onEOI : (x : FSTCK q) => F1 q FST
 onEOI = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FIni
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
   pure FDone
