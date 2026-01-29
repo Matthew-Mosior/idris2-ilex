@@ -10,23 +10,26 @@ import FASTA.Parser
 --          Generators
 --------------------------------------------------------------------------------
 
-rows : Gen Nat
-rows = nat (linear 1 80)
-
 headergen : Gen String
-headergen = string (linear 1 80) ascii
+headergen = string (linear 1 1) ascii
 
 fastaheadergen : Gen FASTAValue
 fastaheadergen = map FHeader headergen
 
+fastaheadergenlist : Gen (List FASTAValue)
+fastaheadergenlist = list (linear 1 80) fastaheadergen 
+
 sequencedatagen : Gen String
-sequencedatagen = string (linear 1 80) (element ['A', 'T', 'G', 'C'])
+sequencedatagen = string (linear 1 1) (element ['A', 'T', 'G', 'C'])
 
 fastasequencedatagen : Gen FASTAValue
 fastasequencedatagen = map FData sequencedatagen
 
+fastasequencedatagenlist : Gen (List FASTAValue)
+fastasequencedatagenlist = list (linear 1 80) fastasequencedatagen 
+
 fastalinegen : Gen FASTALine
-fastalinegen = MkFASTALine rows (element [list (1 1) fastaheadergen, list (1 1000) fastasequencedatagen])
+fastalinegen = map (\x => MkFASTALine 80 x) (fastaheadergenlist ++ fastasequencedatagenlist)
 
 fastagen : Gen FASTA
 fastagen = list (linear 1 500) fastalinegen
