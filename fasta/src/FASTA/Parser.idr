@@ -131,9 +131,7 @@ onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> FST -> F1 q (Either (BoundedEr
 onFASTAValueFHdr v st =
   case st == FD of
     True  => arrFail FSTCK fastaErr FNoHdr x
-    False => T1.do
-      push1 x.fastavalues v
-      pure (Right FHdr)
+    False => push1 x.fastavalues v >> pure (Right FHdr)
 
 onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueFD v = push1 x.fastavalues v >> pure FD
