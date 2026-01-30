@@ -143,6 +143,9 @@ fastaErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
+onFASTAValueFHdrStart : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueFHdrStart v = push1 x.fastavalues v >> pure FHdrToNL
+
 onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
 
@@ -186,7 +189,7 @@ fastaInit : DFA q FSz FSTCK
 fastaInit =
   dfa
     [ conv linebreak (const $ pure FNoHdr)
-    , copen '>' (pure FHdrToNL)
+    , read '>' (onFASTAValueFHdrStart . FHeader)
     , read (plus nucleotide) (const $ pure FNoHdr)
     ]
 
