@@ -108,68 +108,90 @@ fastainit = T1.do
   pure (F l c bs ss er fvs fls by)
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FHdr", "FD", "FNL", "FEmpty", "FDone"]
+  ["FIni", "FBroken", "FHdr", "FNoHdr", "FD", "FNoD", "FEmpty", "FDone"]
+
+--------------------------------------------------------------------------------
+--          Errors
+--------------------------------------------------------------------------------
+
+fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
+fastaErr =
+  arr32 FSz (unexpected [])
+    [ E FBroken $ unexpected ["incorrect format"]
+    , E FNoD $ unexpected ["empty sequence line"]
+    , E FNoHdr $ unexpected ["empty header line"]
+    , E FEmpty $ unexpected ["no data"]
+    , E FHdr $ unexpected ["no sequence line(s)"]
+    ]
 
 --------------------------------------------------------------------------------
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
+onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> FST -> F1 q (Either (BoundedErr Void) FST)
+onFASTAValueFHdr v st =
+  case st == FD of
+    True  => arrFail FSTCK fastaErr FNoHdr x
+    False => T1.do
+      push1 x.fastavalues v
+      pure (Right FHdr)
 
 onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueFD v = push1 x.fastavalues v >> pure FD
 
-onNL : (x : FSTCK q) => F1 q FST
-onNL = T1.do
+onNL : (x : FSTCK q) => FST -> F1 q (Either (BoundedErr Void) FST)
+onNL st = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
-  ln <- read1 x.line
-  push1 x.fastalines (MkFASTALine ln fvs)
-  pure FNL
+  fvs@(_::_) <- getList x.fastavalues | [] => arrFail FSTCK fastaErr FEmpty x
+  case Prelude.any (== FHeader) fvs && Prelude.any (\fv => fv == FData) fvs of
+    True  => arrFail FSTCK fastaErr FBroken x
+    False => T1.do
+      ln <- read1 x.line
+      push1 x.fastalines (MkFASTALine ln fvs)
+      pure (Right st)
 
-onEOI : (x : FSTCK q) => F1 q FST
+onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FIni
+  fvs@(_::_) <- getList x.fastavalues
+    | [] => arrFail FSTCK fastaErr FEmpty x
+  fls@(_::_) <- getList x.fastalines
+    | [] => arrFail FSTCK fastaErr FEmpty x
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
-  pure FDone
+  pure (Right FDone)
 
-fastaDflt : DFA q FSz FSTCK
-fastaDflt =
+fastaDflt : FST -> DFA q FSz FSTCK
+fastaDflt st =
   dfa
-    [ conv linebreak (\_ => onNL)
-    , read ('>' >> plus (not linebreak)) (onFASTAValueFHdr . FHeader)
+    [ conv linebreak (\_ => onNL st)
+    , read ('>' >> plus (not linebreak)) (\x => onFASTAValueFHdr (FHeader x) st)
     , read (plus nucleotide) (onFASTAValueFD . FData)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
-    [ E FIni fastaDflt
-    , E FHdr fastaDflt
-    , E FD fastaDflt
-    ]
-
-fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
-fastaErr =
-  arr32 FSz (unexpected [])
-    [ E FIni $ unexpected ["no data"]
-    , E FNL $ unclosed "\""
-    , E FEmpty $ unexpected ["no sequence line(s)"]
-    , E FHdr $ unexpected ["no sequence line(s)"]
-    , E FD $ unexpected ["^[ATGC]"]
+    [ E FIni (fastaDflt FIni)
+    , E FHdr (fastaDflt FHdr)
+    , E FD (fastaDflt FD)
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FIni || st == FHdr || st == FEmpty of
-    True  => arrFail FSTCK fastaErr st x
+  case st == FIni of
+    True => T1.do
+      (P l c) <- getPosition
+      case c of
+        Z => arrFail FSTCK fastaErr FEmpty x
+        _ => arrFail FSTCK fastaErr FBroken x
     False => T1.do
-      _     <- onEOI
-      fasta <- getList x.fastalines
-      pure (Right fasta)
+      case st == FHdr || st == FEmpty of
+        True  => arrFail FSTCK fastaErr st x
+        False => T1.do
+          _     <- onEOI
+          fasta <- getList x.fastalines
+          pure (Right fasta)
 
 --------------------------------------------------------------------------------
 --          Parser
