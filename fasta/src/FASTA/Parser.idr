@@ -18,10 +18,19 @@ import public Text.ILex
 
 public export
 data FASTAValue : Type where
+  NL      : FASTAValue
   FHeader : String -> FASTAValue
   FData   : String -> FASTAValue
 
 %runElab derive "FASTAValue" [Show,Eq]
+
+isFHeader : FASTAValue -> Bool
+isFHeader (FHeader _) = True
+isFHeader _           = False
+    
+isFData : FASTAValue -> Bool
+isFData (FData _) = True
+isFData _         = False
 
 --------------------------------------------------------------------------------
 --          FASTALine
@@ -106,8 +115,12 @@ fastainit = T1.do
   by <- ref1 ""
   pure (F l c bs ss er fvs fls by)
 
+--------------------------------------------------------------------------------
+--          Parser State
+--------------------------------------------------------------------------------
+
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FBroken", "FHdr", "FNoHdr", "FD", "FNoD", "FEmpty", "FDone"]
+  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrMissingNL", "FHdrDone",  "FD", "FEmpty", "FComplete"]
 
 --------------------------------------------------------------------------------
 --          Errors
@@ -117,9 +130,11 @@ fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
 fastaErr =
   arr32 FSz (unexpected [])
     [ E FBroken $ unexpected ["incorrect format"]
-    , E FNoD $ unexpected ["empty sequence line"]
     , E FNoHdr $ unexpected ["no header line"]
-    , E FEmpty $ unexpected ["no data"]
+    , E FHdrAfterD $ unexpected ["header line found after sequence line"]
+    , E FHdrAE $ unexpected ["header line already encountered"]
+    , E FHdrMissingNL $ unexpected ["newline at end of header line missing"]
+    , E FEmpty $ unexpected ["empty line"]
     , E FHdr $ unexpected ["no sequence line(s)"]
     ]
 
@@ -127,58 +142,75 @@ fastaErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> FST -> F1 q (Either (BoundedErr Void) FST)
-onFASTAValueFHdr v st =
-  case st == FD of
-    True  => arrFail FSTCK fastaErr FNoHdr x
-    False => push1 x.fastavalues v >> pure (Right FHdr)
+onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
 
 onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueFD v = push1 x.fastavalues v >> pure FD
 
-onNL : (x : FSTCK q) => FST -> F1 q (Either (BoundedErr Void) FST)
-onNL st = T1.do
-  incline 1
-  fvs@(_::_) <- getList x.fastavalues | [] => arrFail FSTCK fastaErr FEmpty x
+onNLFHdr : (x : FSTCK q) => F1 q FST
+onNLFHdr = T1.do
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
   case Prelude.any isFHeader fvs && Prelude.any isFData fvs of
-    True  => arrFail FSTCK fastaErr FBroken x
+    True  => pure FBroken
     False => T1.do
+      incline 1
       ln <- read1 x.line
       push1 x.fastalines (MkFASTALine ln fvs)
-      pure (Right st)
-  where
-    isFHeader : FASTAValue -> Bool
-    isFHeader (FHeader _) = True
-    isFHeader _           = False
-    isFData : FASTAValue -> Bool
-    isFData (FData _) = True
-    isFData _         = False
+      pure FHdrDone
+
+onNLFD : (x : FSTCK q) => F1 q FST
+onNLFD = T1.do
+  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
+  case Prelude.any isFHeader fvs && Prelude.any isFData fvs of
+    True  => pure FBroken
+    False => T1.do
+      incline 1
+      ln <- read1 x.line
+      push1 x.fastalines (MkFASTALine ln fvs)
+      pure FD
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
-  incline 1
   fvs@(_::_) <- getList x.fastavalues
     | [] => arrFail FSTCK fastaErr FEmpty x
   fls@(_::_) <- getList x.fastalines
     | [] => arrFail FSTCK fastaErr FEmpty x
+  incline 1
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
-  pure (Right FDone)
+  pure (Right FComplete)
 
-fastaDflt : FST -> DFA q FSz FSTCK
-fastaDflt st =
+fastaFInit : DFA q FSz FSTCK
+fastaFInit =
   dfa
-    [ conv linebreak (\_ => onNL st)
-    , read ('>' >> plus (not linebreak)) (\fv => onFASTAValueFHdr (FHeader fv) st)
+    [ conv linebreak (const $ pure FNoHdr)
+    , read ('>' >> plus (not linebreak)) (onFASTAValueFHdr . FHeader)
+    , read (plus nucleotide) (const $ pure FNoHdr)
+    ]
+
+fastaFHdr : DFA q FSz FSTCK
+fastaFHdr =
+  dfa
+    [ conv linebreak (\_ => onNLFHdr)
+    , read ('>' >> plus (not linebreak)) (const $ pure FHdrAE)
+    , read (plus nucleotide) (const $ pure FHdrMissingNL)
+    ]
+
+fastaFD : DFA q FSz FSTCK
+fastaFD =
+  dfa
+    [ conv linebreak (\_ => onNLFD)
+    , read ('>' >> plus (not linebreak)) (const $ pure FHdrAE)
     , read (plus nucleotide) (onFASTAValueFD . FData)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
-    [ E FIni (fastaDflt FIni)
-    , E FHdr (fastaDflt FHdr)
-    , E FD (fastaDflt FD)
+    [ E FIni fastaFInit
+    , E FHdr fastaFHdr
+    , E FD fastaFD
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
