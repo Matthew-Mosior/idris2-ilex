@@ -2,6 +2,7 @@ module FASTA.Parser
 
 import Data.Bits
 import Data.Buffer
+import Data.ByteString
 import Data.Linear.Ref1
 import Derive.Prelude
 import Syntax.T1
@@ -27,7 +28,7 @@ data FASTAValue : Type where
 isFHeader : FASTAValue -> Bool
 isFHeader (FHeader _) = True
 isFHeader _           = False
-    
+
 isFData : FASTAValue -> Bool
 isFData (FData _) = True
 isFData _         = False
@@ -59,7 +60,7 @@ FASTA = List FASTALine
 --------------------------------------------------------------------------------
 
 linebreak : RExp True
-linebreak = '\n' <|> '\r'
+linebreak = '\n' <|> '\r' <|> "\r\n"
 
 nucleotide : RExp True
 nucleotide = 'A' <|> 'T' <|> 'G' <|> 'C'
@@ -120,7 +121,7 @@ fastainit = T1.do
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrMissingNL", "FHdrDone",  "FD", "FEmpty", "FComplete"]
+  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrMissingNL", "FHdrToNL", "FHdrDone", "FD", "FDNL", "FEmpty", "FComplete"]
 
 --------------------------------------------------------------------------------
 --          Errors
@@ -168,7 +169,7 @@ onNLFD = T1.do
       incline 1
       ln <- read1 x.line
       push1 x.fastalines (MkFASTALine ln fvs)
-      pure FD
+      pure FDNL
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
@@ -181,36 +182,44 @@ onEOI = T1.do
   push1 x.fastalines (MkFASTALine ln fvs)
   pure (Right FComplete)
 
-fastaFInit : DFA q FSz FSTCK
-fastaFInit =
+fastaInit : DFA q FSz FSTCK
+fastaInit =
   dfa
     [ conv linebreak (const $ pure FNoHdr)
-    , read ('>' >> plus (not linebreak)) (onFASTAValueFHdr . FHeader)
+    , copen '>' (pure FHdrToNL)
     , read (plus nucleotide) (const $ pure FNoHdr)
     ]
 
-fastaFHdr : DFA q FSz FSTCK
-fastaFHdr =
+fastaHdrStr : DFA q FSz FSTCK
+fastaHdrStr =
   dfa
-    [ conv linebreak (\_ => onNLFHdr)
-    , read ('>' >> plus (not linebreak)) (const $ pure FHdrAE)
-    , read (plus nucleotide) (const $ pure FHdrMissingNL)
+    [ read dot (onFASTAValueFHdr . FHeader)
+    , conv linebreak (\_ => onNLFHdr)
+    ]
+
+fastaFDInit : DFA q FSz FSTCK
+fastaFDInit =
+  dfa
+    [ conv linebreak (const $ pure FEmpty)
+    , read '>' (const $ pure FHdrAE)
+    , read nucleotide (onFASTAValueFD . FData)
     ]
 
 fastaFD : DFA q FSz FSTCK
 fastaFD =
   dfa
     [ conv linebreak (\_ => onNLFD)
-    , read ('>' >> plus (not linebreak)) (const $ pure FHdrAE)
-    , read (plus nucleotide) (onFASTAValueFD . FData)
+    , read nucleotide (onFASTAValueFD . FData)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
-    [ E FIni fastaFInit
-    , E FHdr fastaFHdr
+    [ E FIni fastaInit
+    , E FHdrToNL fastaHdrStr
+    , E FHdrDone fastaFDInit
     , E FD fastaFD
+    , E FDNL fastaFDInit
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
