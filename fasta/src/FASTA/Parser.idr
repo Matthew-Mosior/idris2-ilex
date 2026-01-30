@@ -118,7 +118,7 @@ fastaErr =
   arr32 FSz (unexpected [])
     [ E FBroken $ unexpected ["incorrect format"]
     , E FNoD $ unexpected ["empty sequence line"]
-    , E FNoHdr $ unexpected ["empty header line"]
+    , E FNoHdr $ unexpected ["no header line"]
     , E FEmpty $ unexpected ["no data"]
     , E FHdr $ unexpected ["no sequence line(s)"]
     ]
