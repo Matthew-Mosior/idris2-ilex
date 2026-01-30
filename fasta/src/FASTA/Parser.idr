@@ -19,19 +19,27 @@ import public Text.ILex
 
 public export
 data FASTAValue : Type where
-  NL      : FASTAValue
-  FHeader : String -> FASTAValue
-  FData   : String -> FASTAValue
+  NL           : FASTAValue
+  FHeaderStart : String -> FASTAValue
+  FHeaderValue : String -> FASTAValue
+  FAdenine     : String -> FASTAValue
+  FThymine     : String -> FASTAValue
+  FGuanine     : String -> FASTAValue
+  FCytosine    : String -> FASTAValue
 
 %runElab derive "FASTAValue" [Show,Eq]
 
 isFHeader : FASTAValue -> Bool
-isFHeader (FHeader _) = True
-isFHeader _           = False
+isFHeader (FHeaderStart _) = True
+isFHeader (FHeaderValue _) = True
+isFHeader _                = False
 
 isFData : FASTAValue -> Bool
-isFData (FData _) = True
-isFData _         = False
+isFData (FAdenine _)  = True
+isFData (FThymine _)  = True
+isFData (FGuanine _)  = True
+isFData (FCytosine _) = True
+isFData _             = False
 
 --------------------------------------------------------------------------------
 --          FASTALine
@@ -64,6 +72,18 @@ linebreak = '\n' <|> '\r' <|> "\r\n"
 
 nucleotide : RExp True
 nucleotide = 'A' <|> 'T' <|> 'G' <|> 'C'
+
+adenine : RExp True
+adenine = 'A'
+
+thymine : RExp True
+thymine = 'T'
+
+guanine : RExp True
+guanine = 'G'
+
+cytosine : RExp True
+cytosine = 'C'
 
 --------------------------------------------------------------------------------
 --          Parser State
@@ -143,14 +163,20 @@ fastaErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueFHdrStart : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFHdrStart v = push1 x.fastavalues v >> pure FHdrToNL
-
 onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdr
+onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdrToNL
 
-onFASTAValueFD : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFD v = push1 x.fastavalues v >> pure FD
+onFASTAValueFAdenine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueFAdenine v = push1 x.fastavalues v >> pure FD
+
+onFASTAValueFThymine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueFThymine v = push1 x.fastavalues v >> pure FD
+
+onFASTAValueFGuanine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueFGuanine v = push1 x.fastavalues v >> pure FD
+
+onFASTAValueFCytosine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueFCytosine v = push1 x.fastavalues v >> pure FD
 
 onNLFHdr : (x : FSTCK q) => F1 q FST
 onNLFHdr = T1.do
@@ -189,14 +215,14 @@ fastaInit : DFA q FSz FSTCK
 fastaInit =
   dfa
     [ conv linebreak (const $ pure FNoHdr)
-    , read '>' (onFASTAValueFHdrStart . FHeader)
-    , read (plus nucleotide) (const $ pure FNoHdr)
+    , read '>' (onFASTAValueFHdr . FHeaderStart)
+    , read nucleotide (const $ pure FNoHdr)
     ]
 
 fastaHdrStr : DFA q FSz FSTCK
 fastaHdrStr =
   dfa
-    [ read dot (onFASTAValueFHdr . FHeader)
+    [ read dot (onFASTAValueFHdr . FHeaderValue)
     , conv linebreak (\_ => onNLFHdr)
     ]
 
@@ -205,14 +231,20 @@ fastaFDInit =
   dfa
     [ conv linebreak (const $ pure FEmpty)
     , read '>' (const $ pure FHdrAE)
-    , read nucleotide (onFASTAValueFD . FData)
+    , read adenine (onFASTAValueFAdenine . FAdenine)
+    , read thymine (onFASTAValueFThymine . FThymine)
+    , read guanine (onFASTAValueFGuanine . FGuanine)
+    , read cytosine (onFASTAValueFCytosine . FCytosine)
     ]
 
 fastaFD : DFA q FSz FSTCK
 fastaFD =
   dfa
     [ conv linebreak (\_ => onNLFD)
-    , read nucleotide (onFASTAValueFD . FData)
+    , read adenine (onFASTAValueFAdenine . FAdenine)
+    , read thymine (onFASTAValueFThymine . FThymine)
+    , read guanine (onFASTAValueFGuanine . FGuanine)
+    , read cytosine (onFASTAValueFCytosine . FCytosine)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
