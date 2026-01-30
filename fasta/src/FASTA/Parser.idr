@@ -228,11 +228,7 @@ fastaSteps =
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
   case st == FIni of
-    True => T1.do
-      (P l c) <- getPosition
-      case c of
-        Z => arrFail FSTCK fastaErr FEmpty x
-        _ => arrFail FSTCK fastaErr FBroken x
+    True  => arrFail FSTCK fastaErr FEmpty x
     False => T1.do
       case st == FHdr || st == FEmpty of
         True  => arrFail FSTCK fastaErr st x
