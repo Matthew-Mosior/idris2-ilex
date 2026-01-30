@@ -18,7 +18,6 @@ import public Text.ILex
 
 public export
 data FASTAValue : Type where
-  NL      : FASTAValue
   FHeader : String -> FASTAValue
   FData   : String -> FASTAValue
 
@@ -143,12 +142,19 @@ onNL : (x : FSTCK q) => FST -> F1 q (Either (BoundedErr Void) FST)
 onNL st = T1.do
   incline 1
   fvs@(_::_) <- getList x.fastavalues | [] => arrFail FSTCK fastaErr FEmpty x
-  case Prelude.any (== FHeader) fvs && Prelude.any (\fv => fv == FData) fvs of
+  case Prelude.any isFHeader fvs && Prelude.any isFData fvs of
     True  => arrFail FSTCK fastaErr FBroken x
     False => T1.do
       ln <- read1 x.line
       push1 x.fastalines (MkFASTALine ln fvs)
       pure (Right st)
+  where
+    isFHeader : FASTAValue -> Bool
+    isFHeader (FHeader _) = True
+    isFHeader _           = False
+    isFData : FASTAValue -> Bool
+    isFData (FData _) = True
+    isFData _         = False
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
@@ -165,7 +171,7 @@ fastaDflt : FST -> DFA q FSz FSTCK
 fastaDflt st =
   dfa
     [ conv linebreak (\_ => onNL st)
-    , read ('>' >> plus (not linebreak)) (\x => onFASTAValueFHdr (FHeader x) st)
+    , read ('>' >> plus (not linebreak)) (\fv => onFASTAValueFHdr (FHeader fv) st)
     , read (plus nucleotide) (onFASTAValueFD . FData)
     ]
 
