@@ -29,15 +29,6 @@ data FASTAValue : Type where
 
 %runElab derive "FASTAValue" [Show,Eq]
 
-Show FASTAValue where
-  show (NL v)          = toString v
-  show HeaderStart     = ">"
-  show (HeaderValue v) = v
-  show Adenine         = "A"
-  show Thymine         = "T"
-  show Guanine         = "G"
-  show Cytosine        = "C"
-
 isHeader : FASTAValue -> Bool
 isHeader HeaderStart     = True
 isHeader (HeaderValue _) = True
@@ -291,3 +282,25 @@ fasta = P FIni fastainit fastaSteps snocChunk fastaErr fastaEOI
 export %inline
 parseFASTA : Origin -> String -> Either (ParseError Void) FASTA
 parseFASTA = parseString fasta
+
+--------------------------------------------------------------------------------
+--          Show
+--------------------------------------------------------------------------------
+
+export
+showFASTAValue : FASTAValue -> String
+showFASTAValue (NL v)          = toString v
+showFASTAValue HeaderStart     = ">"
+showFASTAValue (HeaderValue v) = v
+showFASTAValue Adenine         = "A"
+showFASTAValue Thymine         = "T"
+showFASTAValue Guanine         = "G"
+showFASTAValue Cytosine        = "C"
+
+export
+showFASTALine : FASTALine -> String
+showFASTALine (MkFASTALine _ values) = concat $ map showFASTAValue values
+
+export
+showFASTA : FASTA -> String
+showFASTA fastalines = concat $ map showFASTALine fastalines
