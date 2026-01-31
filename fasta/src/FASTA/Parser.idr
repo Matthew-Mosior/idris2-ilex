@@ -19,27 +19,27 @@ import public Text.ILex
 
 public export
 data FASTAValue : Type where
-  NL           : FASTAValue
-  FHeaderStart : String -> FASTAValue
-  FHeaderValue : String -> FASTAValue
-  FAdenine     : String -> FASTAValue
-  FThymine     : String -> FASTAValue
-  FGuanine     : String -> FASTAValue
-  FCytosine    : String -> FASTAValue
+  NL          : FASTAValue
+  HeaderStart : FASTAValue
+  HeaderValue : String -> FASTAValue
+  Adenine     : FASTAValue
+  Thymine     : FASTAValue
+  Guanine     : FASTAValue
+  Cytosine    : FASTAValue
 
 %runElab derive "FASTAValue" [Show,Eq]
 
-isFHeader : FASTAValue -> Bool
-isFHeader (FHeaderStart _) = True
-isFHeader (FHeaderValue _) = True
-isFHeader _                = False
+isHeader : FASTAValue -> Bool
+isHeader HeaderStart = True
+isHeader (HeaderValue _) = True
+isHeader _                = False
 
-isFData : FASTAValue -> Bool
-isFData (FAdenine _)  = True
-isFData (FThymine _)  = True
-isFData (FGuanine _)  = True
-isFData (FCytosine _) = True
-isFData _             = False
+isData : FASTAValue -> Bool
+isData Adenine  = True
+isData Thymine  = True
+isData Guanine  = True
+isData Cytosine = True
+isData _        = False
 
 --------------------------------------------------------------------------------
 --          FASTALine
@@ -163,25 +163,25 @@ fastaErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFHdr v = push1 x.fastavalues v >> pure FHdrToNL
+onFASTAValueHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueHdr v = push1 x.fastavalues v >> pure FHdrToNL
 
-onFASTAValueFAdenine : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFAdenine v = push1 x.fastavalues v >> pure FD
+onFASTAValueAdenine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueAdenine v = push1 x.fastavalues v >> pure FD
 
-onFASTAValueFThymine : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFThymine v = push1 x.fastavalues v >> pure FD
+onFASTAValueThymine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueThymine v = push1 x.fastavalues v >> pure FD
 
-onFASTAValueFGuanine : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFGuanine v = push1 x.fastavalues v >> pure FD
+onFASTAValueGuanine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueGuanine v = push1 x.fastavalues v >> pure FD
 
-onFASTAValueFCytosine : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueFCytosine v = push1 x.fastavalues v >> pure FD
+onFASTAValueCytosine : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueCytosine v = push1 x.fastavalues v >> pure FD
 
 onNLFHdr : (x : FSTCK q) => F1 q FST
 onNLFHdr = T1.do
   fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
-  case Prelude.any isFHeader fvs && Prelude.any isFData fvs of
+  case Prelude.any isHeader fvs && Prelude.any isData fvs of
     True  => pure FBroken
     False => T1.do
       incline 1
@@ -192,7 +192,7 @@ onNLFHdr = T1.do
 onNLFD : (x : FSTCK q) => F1 q FST
 onNLFD = T1.do
   fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
-  case Prelude.any isFHeader fvs && Prelude.any isFData fvs of
+  case Prelude.any isHeader fvs && Prelude.any isData fvs of
     True  => pure FBroken
     False => T1.do
       incline 1
@@ -215,14 +215,14 @@ fastaInit : DFA q FSz FSTCK
 fastaInit =
   dfa
     [ conv linebreak (const $ pure FNoHdr)
-    , read '>' (onFASTAValueFHdr . FHeaderStart)
+    , read '>' (\_ => onFASTAValueHdr HeaderStart)
     , read nucleotide (const $ pure FNoHdr)
     ]
 
 fastaHdrStr : DFA q FSz FSTCK
 fastaHdrStr =
   dfa
-    [ read dot (onFASTAValueFHdr . FHeaderValue)
+    [ read dot (onFASTAValueHdr . HeaderValue)
     , conv linebreak (\_ => onNLFHdr)
     ]
 
@@ -231,20 +231,20 @@ fastaFDInit =
   dfa
     [ conv linebreak (const $ pure FEmpty)
     , read '>' (const $ pure FHdrAE)
-    , read adenine (onFASTAValueFAdenine . FAdenine)
-    , read thymine (onFASTAValueFThymine . FThymine)
-    , read guanine (onFASTAValueFGuanine . FGuanine)
-    , read cytosine (onFASTAValueFCytosine . FCytosine)
+    , read adenine (\_ => onFASTAValueAdenine Adenine)
+    , read thymine (\_ => onFASTAValueThymine Thymine)
+    , read guanine (\_ => onFASTAValueGuanine Guanine)
+    , read cytosine (\_ => onFASTAValueCytosine Cytosine)
     ]
 
 fastaFD : DFA q FSz FSTCK
 fastaFD =
   dfa
     [ conv linebreak (\_ => onNLFD)
-    , read adenine (onFASTAValueFAdenine . FAdenine)
-    , read thymine (onFASTAValueFThymine . FThymine)
-    , read guanine (onFASTAValueFGuanine . FGuanine)
-    , read cytosine (onFASTAValueFCytosine . FCytosine)
+    , read adenine (\_ => onFASTAValueAdenine Adenine)
+    , read thymine (\_ => onFASTAValueThymine Thymine)
+    , read guanine (\_ => onFASTAValueGuanine Guanine)
+    , read cytosine (\_ => onFASTAValueCytosine Cytosine)
     ]
 
 fastaSteps : Lex1 q FSz FSTCK
