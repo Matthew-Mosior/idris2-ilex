@@ -145,7 +145,7 @@ fastainit = T1.do
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrMissingNL", "FHdrToNLR", "FHdrToNLS", "FHdrDone", "FD", "FDNL", "FEmpty", "FComplete"]
+  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrToNLR", "FHdrToNLS", "FHdrDone", "FD", "FDNL", "FEmpty", "FComplete"]
 
 --------------------------------------------------------------------------------
 --          Errors
@@ -158,7 +158,6 @@ fastaErr =
     , E FNoHdr $ unexpected ["no header line"]
     , E FHdrAfterD $ unexpected ["header line found after sequence line"]
     , E FHdrAE $ unexpected ["header line already encountered"]
-    , E FHdrMissingNL $ unexpected ["newline at end of header line missing"]
     , E FEmpty $ unexpected ["empty line"]
     , E FHdr $ unexpected ["no sequence line(s)"]
     ]
@@ -274,8 +273,8 @@ fastaSteps =
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FIni || st == FHdr || st == FEmpty of
-    True  => arrFail FSTCK fastaErr FEmpty x
+  case st == FIni || st == FHdr || st == FEmpty || st == FNoHdr || st == FHdrAE || st == FBroken of
+    True  => arrFail FSTCK fastaErr st x
     False => T1.do
       _ <- onEOI
       fasta <- getList x.fastalines

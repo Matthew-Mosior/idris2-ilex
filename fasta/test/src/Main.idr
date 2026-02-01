@@ -18,8 +18,86 @@ fastastrminimal =
   A
   """
 
+fastastr : String
+fastastr =
+  """
+  >This is the header line of a FASTA file
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  ATGTGAAAAACCCGGGGGTTTTGTTGTTGTGTGTGGTGTTTG
+  """
+
+fastastrnoheader : String
+fastastrnoheader =
+  """
+  ATTG
+  ATGA
+  """
+
+fastastrheaderaftersequence : String
+fastastrheaderaftersequence =
+  """
+  >x
+  A
+  >x
+  """
+
+fastastrbadsequence : String
+fastastrbadsequence =
+  """
+  >x
+  ATGO
+  """
+
+fastastrempty : String
+fastastrempty =
+  """
+  """
+
 --------------------------------------------------------------------------------
---          Tests
+--          Errors
+--------------------------------------------------------------------------------
+
+fastastrnoheadererr : String
+fastastrnoheadererr =
+  "Error: Expected \"no header line\", but got 'T'\n\nvirtual: 1:2--1:3\n 1 | ATTG\n      ^\n"
+
+fastastrheaderaftersequenceerr : String
+fastastrheaderaftersequenceerr =
+  "Error: Expected \"header line already encountered\", but got 'x'\n\nvirtual: 3:3--3:4\n 1 | >x\n 2 | A\n 3 | >x\n       ^\n"
+
+fastastrbadsequenceerr : String
+fastastrbadsequenceerr =
+  "Error: Unexpected 'O'\n\nvirtual: 2:5--2:6\n 1 | >x\n 2 | ATGO\n         ^\n"
+
+fastastremptyerr : String
+fastastremptyerr =
+  "Error: Unexpected end of input\n\nvirtual: 1:1--1:2\n     ^\n"
+
+--------------------------------------------------------------------------------
+--          testErr
+--------------------------------------------------------------------------------
+
+testErr : String -> String -> Property
+testErr s exp =
+  let res := case parseFASTA Virtual s of
+        Left e  => interpolate e
+        Right v => show v
+   in property1 $ res === exp
+
+--------------------------------------------------------------------------------
+--          Property Tests
 --------------------------------------------------------------------------------
 
 prop_minimal_roundtrip : Property
@@ -28,197 +106,23 @@ prop_minimal_roundtrip = property1 $ do
     | Left _ => failure
   parseFASTA Virtual (showFASTA parsedfastastrminimal) === Right parsedfastastrminimal
 
-{-
+prop_roundtrip : Property
+prop_roundtrip = property1 $ do
+  Right parsedfastastr <- pure $ parseFASTA Virtual fastastr
+    | Left _ => failure
+  parseFASTA Virtual (showFASTA parsedfastastr) === Right parsedfastastr
 
-prim : Gen JSON
-prim = frequency
-  [ (1, element [JNull, JBool True, JBool False])
-  , (5, JDouble <$> double (exponentialDouble 0 1.0e50))
-  , ( 5
-    , JInteger <$>
-        integer (
-          exponentialFrom
-            0
-            (-0x100000000000000000000000000000000)
-            0x100000000000000000000000000000000
-          )
-    )
-  , (5, JString <$> string (linear 0 10) jsonChar)
-  ]
+prop_no_header : Property
+prop_no_header = testErr fastastrnoheader fastastrnoheadererr
 
-json_ : (depth : Nat) -> Gen JSON
-json_ Z     = prim
-json_ (S k) = frequency
-  [ (1, prim)
-  , (5, JArray <$> list (linear 0 10) (json_ k))
-  , (5, JObject <$> list (linear 0 10) [| MkPair key (json_ k)|])
-  ]
+prop_header_after_sequence : Property
+prop_header_after_sequence = testErr fastastrheaderaftersequence fastastrheaderaftersequenceerr
 
-prop_roundTrip : Property
-prop_roundTrip = property $ do
-  v <- forAll (json_ 3)
-  let str : String
-      str = show v
+prop_bad_sequence : Property
+prop_bad_sequence = testErr fastastrbadsequence fastastrbadsequenceerr
 
-      len : Nat
-      len = length str
-
-  classify "Length in (0000,10]"    (len <= 10)
-  classify "Length in (0010,50]"    (len > 10 && len <= 50)
-  classify "Length in (0050,100]"   (len > 50 && len <= 100)
-  classify "Length in (0100,500]"   (len > 100 && len <= 500)
-  classify "Length > 500"           (len > 500)
-
-  parseJSON Virtual str === Right v
-
-
-reverseRoundTrip : Show a => Gen a -> Property
-reverseRoundTrip g = property $ do
-  n <- forAll g
-  let enc = show n
-  (map show $ parseJSON Virtual enc) === Right enc
-
-prop_integerReverseRoundTrip : Property
-prop_integerReverseRoundTrip =
-  reverseRoundTrip $ integer $
-    exponentialFrom
-      0
-      (-0x100000000000000000000000000000000)
-      0x100000000000000000000000000000000
-
-prop_doubleReverseRoundTrip : Property
-prop_doubleReverseRoundTrip =
-  reverseRoundTrip $ double $ exponentialDouble 0 1.0e50
-
-prop_exponentialNotationInteger : Property
-prop_exponentialNotationInteger =
-  property $ parseJSON Virtual "1e3" === Right (JDouble 1000.0)
-
-prop_exponentialNotationInteger1 : Property
-prop_exponentialNotationInteger1 =
-  property $ parseJSON Virtual "1e+3" === Right (JDouble 1000.0)
-
-prop_exponentialNotationDouble : Property
-prop_exponentialNotationDouble =
-  property $ parseJSON Virtual "1e-3" === Right (JDouble 0.001)
-
---------------------------------------------------------------------------------
---          Errors
---------------------------------------------------------------------------------
-
-prettyErr : String -> IO ()
-prettyErr s =
-  case parseJSON Virtual s of
-    Left x => putStrLn "\{x}"
-    _      => putStrLn "Correct"
-
-testErr : String -> String -> Property
-testErr s exp =
-  let res := case parseJSON Virtual s of
-        Left e  => interpolate e
-        Right v => show v
-   in property1 $ res === exp
-
-prop_err1 : Property
-prop_err1 = testErr #"{"foo?" : nlul}"#
-  """
-  Error: Unexpected "nl"
-
-  virtual: 1:11--1:13
-   1 | {"foo?" : nlul}
-                 ^^
-
-  """
-
-prop_err2 : Property
-prop_err2 = testErr #"{"foo?" : }"#
-  """
-  Error: Unexpected '}'
-
-  virtual: 1:11--1:12
-   1 | {"foo?" : }
-                 ^
-
-  """
-
-prop_err3 : Property
-prop_err3 = testErr #"{"foo?" : 12"#
-  """
-  Error: Unclosed '{'
-
-  virtual: 1:1--1:2
-   1 | {"foo?" : 12
-       ^
-
-  """
-
-prop_err4 : Property
-prop_err4 = testErr "[true,false,"
-  """
-  Error: Unclosed '['
-
-  virtual: 1:1--1:2
-   1 | [true,false,
-       ^
-
-  """
-
-prop_err5 : Property
-prop_err5 = testErr "[true,false, ?"
-  """
-  Error: Unexpected '?'
-
-  virtual: 1:14--1:15
-   1 | [true,false, ?
-                    ^
-
-  """
-
-prop_err6 : Property
-prop_err6 = testErr "1.false"
-  """
-  Error: Unexpected "1.f"
-
-  virtual: 1:1--1:4
-   1 | 1.false
-       ^^^
-
-  """
-
-prop_err7 : Property
-prop_err7 = testErr "1."
-  """
-  Error: Unexpected "1."
-
-  virtual: 1:1--1:3
-   1 | 1.
-       ^^
-
-  """
-
-prop_err8 : Property
-prop_err8 = testErr "0012"
-  """
-  Error: Unexpected '0'
-
-  virtual: 1:2--1:3
-   1 | 0012
-        ^
-
-  """
-
-
-prop_err9 : Property
-prop_err9 = testErr "-0012"
-  """
-  Error: Unexpected '0'
-
-  virtual: 1:3--1:4
-   1 | -0012
-         ^
-
-  """
-  -}
+prop_empty : Property
+prop_empty = testErr fastastrempty fastastremptyerr
 
 --------------------------------------------------------------------------------
 --          Properties
@@ -229,6 +133,11 @@ properties =
   MkGroup
     "FASTA.Parser"
     [ ("prop_minimal_roundtrip", prop_minimal_roundtrip)
+    , ("prop_roundtrip", prop_roundtrip)
+    , ("prop_no_header", prop_no_header)
+    , ("prop_header_after_sequence", prop_header_after_sequence)
+    , ("prop_bad_sequence", prop_bad_sequence)
+    , ("prop_empty", prop_empty)
     ]
 
 main : IO ()
