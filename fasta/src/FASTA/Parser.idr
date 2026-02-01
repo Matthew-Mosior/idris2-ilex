@@ -5,8 +5,12 @@ import Data.Buffer
 import Data.ByteString
 import Data.Linear.Ref1
 import Derive.Prelude
+import FS.Posix
+import IO.Async.Loop.Epoll
+import IO.Async.Loop.Posix
 import Syntax.T1
 import Text.ILex.Derive
+import Text.ILex.FS
 
 import public Text.ILex
 
@@ -292,23 +296,27 @@ parseFASTA : Origin -> String -> Either (ParseError Void) FASTA
 parseFASTA = parseString fasta
 
 --------------------------------------------------------------------------------
---          Show
+--          Streaming
 --------------------------------------------------------------------------------
 
-export
-showFASTAValue : FASTAValue -> String
-showFASTAValue (NL v)          = toString v
-showFASTAValue HeaderStart     = ">"
-showFASTAValue (HeaderValue v) = v
-showFASTAValue Adenine         = "A"
-showFASTAValue Thymine         = "T"
-showFASTAValue Guanine         = "G"
-showFASTAValue Cytosine        = "C"
+0 Prog : Type -> Type -> Type
+Prog o r = AsyncPull Poll o [ParseError Void, Errno] r
 
-export
-showFASTALine : FASTALine -> String
-showFASTALine (MkFASTALine _ values) = concat $ map showFASTAValue values
+covering
+runProg : Prog Void () -> IO ()
+runProg prog =
+ let handled := handle [stderrLn . interpolate, stderrLn . interpolate] prog
+  in epollApp $ mpull handled
 
-export
-showFASTA : FASTA -> String
-showFASTA fastalines = concat $ map showFASTALine fastalines
+streamFASTA : String -> Prog Void ()
+streamFASTA pth =
+     readBytes pth
+  |> streamParse fasta (FileSrc pth)
+  |> C.count
+  |> printLnTo Stdout
+
+streamFASTAFiles : Prog String () -> Prog Void ()
+streamFASTAFiles pths =
+     flatMap pths (\p => readBytes p |> streamParse fasta (FileSrc p))
+  |> C.count
+  |> printLnTo Stdout
