@@ -187,35 +187,33 @@ onFASTAValueCytosine v = push1 x.fastavalues v >> pure FD
 
 onNLFHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
 onNLFHdr v = T1.do
+  incline 1
+  push1 x.fastavalues v
   fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
   case Prelude.any isHeader fvs && Prelude.any isData fvs of
     True  => pure FBroken
     False => T1.do
-      push1 x.fastavalues v
-      incline 1
       ln <- read1 x.line
       push1 x.fastalines (MkFASTALine ln fvs)
       pure FHdrDone
 
 onNLFD : (x : FSTCK q) => FASTAValue -> F1 q FST
 onNLFD v = T1.do
+  incline 1
+  push1 x.fastavalues v
   fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
   case Prelude.any isHeader fvs && Prelude.any isData fvs of
     True  => pure FBroken
     False => T1.do
-      push1 x.fastavalues v
-      incline 1
       ln <- read1 x.line
       push1 x.fastalines (MkFASTALine ln fvs)
       pure FDNL
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
+  incline 1
   fvs@(_::_) <- getList x.fastavalues
     | [] => arrFail FSTCK fastaErr FEmpty x
-  fls@(_::_) <- getList x.fastalines
-    | [] => arrFail FSTCK fastaErr FEmpty x
-  incline 1
   ln <- read1 x.line
   push1 x.fastalines (MkFASTALine ln fvs)
   pure (Right FComplete)
@@ -279,7 +277,7 @@ fastaEOI st x =
   case st == FIni || st == FHdr || st == FEmpty of
     True  => arrFail FSTCK fastaErr FEmpty x
     False => T1.do
-      _     <- onEOI
+      _ <- onEOI
       fasta <- getList x.fastalines
       pure (Right fasta)
 

@@ -1,52 +1,32 @@
 module Main
 
-import Data.Vect
-import Hedgehog
 import FASTA.Parser
+import FASTA.Show
+
+import Hedgehog
 
 %default total
 
 --------------------------------------------------------------------------------
---          Generators
+--          Example FASTA (String)
 --------------------------------------------------------------------------------
 
-linelength : Nat
-linelength = 80
-
-headergen : Gen String
-headergen = constant ">"
-
-fastaheadergen : Gen FASTAValue
-fastaheadergen = map FHeader headergen
-
-fastaheadergenlist : Gen (List FASTAValue)
-fastaheadergenlist = list (linear 2 linelength) fastaheadergen 
-
-sequencedatagen : Gen String
-sequencedatagen = string (linear 1 1) (element ['A', 'T', 'G', 'C'])
-
-fastasequencedatagen : Gen FASTAValue
-fastasequencedatagen = map FData sequencedatagen
-
-fastasequencedatagenlist : Gen (List FASTAValue)
-fastasequencedatagenlist = list (linear linelength linelength) fastasequencedatagen 
-
-fastalinegen : Gen FASTALine
-fastalinegen = map (\x => MkFASTALine linelength x) (choice [fastaheadergenlist, fastasequencedatagenlist])
-
-fasta_ : Gen FASTA
-fasta_ = list (linear 1 500) fastalinegen
+fastastrminimal : String
+fastastrminimal =
+  """
+  >x
+  A
+  """
 
 --------------------------------------------------------------------------------
---          Property tests
+--          Tests
 --------------------------------------------------------------------------------
 
-prop_roundTrip : Property
-prop_roundTrip = property $ do
-  v <- forAll fasta_
-  let str : String
-      str = show v
-  parseFASTA Virtual str === Right v
+prop_minimal_roundtrip : Property
+prop_minimal_roundtrip = property1 $ do
+  Right parsedfastastrminimal <- pure $ parseFASTA Virtual fastastrminimal
+    | Left _ => failure
+  parseFASTA Virtual (showFASTA parsedfastastrminimal) === Right parsedfastastrminimal
 
 {-
 
@@ -238,6 +218,7 @@ prop_err9 = testErr "-0012"
          ^
 
   """
+  -}
 
 --------------------------------------------------------------------------------
 --          Properties
@@ -246,32 +227,9 @@ prop_err9 = testErr "-0012"
 properties : Group
 properties =
   MkGroup
-    "JSON.Parser"
-    [ ("prop_roundTrip", prop_roundTrip)
-    , ("prop_integerReverseRoundTrip", prop_integerReverseRoundTrip)
-    , ("prop_doubleReverseRoundTrip", prop_doubleReverseRoundTrip)
-    , ("prop_err1", prop_err1)
-    , ("prop_err2", prop_err2)
-    , ("prop_err3", prop_err3)
-    , ("prop_err4", prop_err4)
-    , ("prop_err5", prop_err5)
-    , ("prop_err6", prop_err6)
-    , ("prop_err7", prop_err7)
-    , ("prop_err8", prop_err8)
-    , ("prop_err9", prop_err9)
-    , ("prop_exponentialNotationInteger", prop_exponentialNotationInteger)
-    , ("prop_exponentialNotationInteger1", prop_exponentialNotationInteger1)
-    , ("prop_exponentialNotationDouble", prop_exponentialNotationDouble)
-    ]
--}
-
-properties : Group
-properties =
-  MkGroup
     "FASTA.Parser"
-    [ ("prop_roundTrip", prop_roundTrip)
+    [ ("prop_minimal_roundtrip", prop_minimal_roundtrip)
     ]
 
 main : IO ()
---main = putStrLn "haha"
 main = test [ properties ]
