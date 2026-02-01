@@ -272,15 +272,12 @@ fastaSteps =
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
 fastaEOI st x =
-  case st == FIni of
+  case st == FIni || st == FHdr || st == FEmpty of
     True  => arrFail FSTCK fastaErr FEmpty x
     False => T1.do
-      case st == FHdr || st == FEmpty of
-        True  => arrFail FSTCK fastaErr st x
-        False => T1.do
-          _     <- onEOI
-          fasta <- getList x.fastalines
-          pure (Right fasta)
+      _     <- onEOI
+      fasta <- getList x.fastalines
+      pure (Right fasta)
 
 --------------------------------------------------------------------------------
 --          Parser
