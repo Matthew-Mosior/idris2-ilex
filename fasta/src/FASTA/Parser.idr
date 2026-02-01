@@ -141,7 +141,7 @@ fastainit = T1.do
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "FSz" "FST"
-  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrMissingNL", "FHdrToNL", "FHdrDone", "FD", "FDNL", "FEmpty", "FComplete"]
+  ["FIni", "FBroken", "FHdr", "FNoHdr", "FHdrAfterD", "FHdrAE", "FHdrMissingNL", "FHdrToNLR", "FHdrToNLS", "FHdrDone", "FD", "FDNL", "FEmpty", "FComplete"]
 
 --------------------------------------------------------------------------------
 --          Errors
@@ -163,8 +163,11 @@ fastaErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueHdr : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueHdr v = push1 x.fastavalues v >> pure FHdrToNL
+onFASTAValueHdrS : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueHdrS v = push1 x.fastavalues v >> pure FHdrToNLS
+
+onFASTAValueHdrR : (x : FSTCK q) => FASTAValue -> F1 q FST
+onFASTAValueHdrR v = push1 x.fastavalues v >> pure FHdrToNLR
 
 onFASTAValueAdenine : (x : FSTCK q) => FASTAValue -> F1 q FST
 onFASTAValueAdenine v = push1 x.fastavalues v >> pure FD
@@ -217,14 +220,21 @@ fastaInit : DFA q FSz FSTCK
 fastaInit =
   dfa
     [ conv linebreak (const $ pure FNoHdr)
-    , read '>' (\_ => onFASTAValueHdr HeaderStart)
+    , read '>' (\_ => onFASTAValueHdrS HeaderStart)
     , read nucleotide (const $ pure FNoHdr)
     ]
 
-fastaHdrStr : DFA q FSz FSTCK
-fastaHdrStr =
+fastaHdrStrStart : DFA q FSz FSTCK
+fastaHdrStrStart =
   dfa
-    [ read dot (onFASTAValueHdr . HeaderValue)
+    [ read dot (onFASTAValueHdrR . HeaderValue)
+    , conv linebreak (const $ pure FBroken)
+    ]
+
+fastaHdrStrRest : DFA q FSz FSTCK
+fastaHdrStrRest =
+  dfa
+    [ read dot (onFASTAValueHdrR . HeaderValue)
     , conv linebreak (onNLFHdr . NL)
     ]
 
@@ -253,7 +263,8 @@ fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
     [ E FIni fastaInit
-    , E FHdrToNL fastaHdrStr
+    , E FHdrToNLS fastaHdrStrStart
+    , E FHdrToNLR fastaHdrStrRest
     , E FHdrDone fastaFDInit
     , E FD fastaFD
     , E FDNL fastaFDInit
