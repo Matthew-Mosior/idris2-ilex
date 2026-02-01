@@ -266,8 +266,8 @@ fastaSteps =
     , E FHdrToNLS fastaHdrStrStart
     , E FHdrToNLR fastaHdrStrRest
     , E FHdrDone fastaFDInit
-    , E FD fastaFD
     , E FDNL fastaFDInit
+    , E FD fastaFD
     ]
 
 fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
