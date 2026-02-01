@@ -138,6 +138,12 @@ quotes x xs  = go x xs
     go s []        = "or \{quote s}"
     go s (y :: ys) = "\{quote s}, " ++ go y ys
 
+||| Converts a value in the range `[0..15]` to a hexadecimal
+||| lower-case character.
+|||
+||| For simplicity, this function assumes the range has been checked.
+||| Therefore, values `>= 15` will return `'f'`.
+public export
 hexChar : Bits8 -> Char
 hexChar 0  = '0'
 hexChar 1  = '1'
@@ -156,12 +162,12 @@ hexChar 13 = 'd'
 hexChar 14 = 'e'
 hexChar _  = 'f'
 
-||| Pretty prints a byte in hexadecimal for.
+||| Pretty prints a byte as two hexadecimal digits.
 |||
-||| Example: `toHex 110 === "0x6e"`.
+||| Example: `toHex 110 === "6e"`.
 export
 toHex : Bits8 -> String
-toHex x = pack ['0','x',hexChar (shiftR x 4), hexChar (x .&. 15)]
+toHex x = pack [hexChar (shiftR x 4), hexChar (x .&. 15)]
 
 export
 Interpolation e => Interpolation (InnerError e) where
@@ -176,7 +182,7 @@ Interpolation e => Interpolation (InnerError e) where
   interpolate (Unclosed x)         = "Unclosed \{quote x}"
   interpolate (Unknown x)          = "Unknown or invalid token: \{x}"
   interpolate (Custom err)         = interpolate err
-  interpolate (InvalidByte x)      = "Unexpected or invalid byte: \{toHex x}"
+  interpolate (InvalidByte x)      = "Unexpected or invalid byte: 0x\{toHex x}"
 
 --------------------------------------------------------------------------------
 --          Interface

@@ -48,3 +48,5 @@ jobs:
         run: pack typecheck ilex-fasta
       - name: Test ilex-fasta
         run: pack --no-prompt test ilex-fasta
+      - name: Build debug
+        run: pack --no-prompt typecheck ilex-debug

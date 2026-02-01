@@ -1,5 +1,6 @@
 module JSON.Parser
 
+import Data.Bits
 import Data.Buffer
 import Data.Linear.Ref1
 import Derive.Prelude
@@ -36,10 +37,10 @@ escape sc c =
   if isControl c
     then
       let x  := the Integer $ cast c
-          d1 := hexChar $ x `div` 0x1000
-          d2 := hexChar $ (x `mod` 0x1000) `div` 0x100
-          d3 := hexChar $ (x `mod` 0x100)  `div` 0x10
-          d4 := hexChar $ x `mod` 0x10
+          d1 := hexChar $ cast $ (shiftR x 12 .&. 0xf)
+          d2 := hexChar $ cast $ (shiftR x 8 .&. 0xf)
+          d3 := hexChar $ cast $ (shiftR x 4 .&. 0xf)
+          d4 := hexChar $ cast (x .&. 0xf)
        in sc :< '\\' :< 'u' :< d1 :< d2 :< d3 :< d4
     else sc :< c
 
@@ -125,7 +126,7 @@ dropNull x            = x
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "JSz" "JST"
-  ["JIni","ANew","AVal","ACom","ONew","OVal","OCom","OLbl","OCol","Str","Done"]
+  ["JIni","ANew","AVal","ACom","ONew","OVal","OCom","OLbl","OCol","JStr","JDone"]
 
 data Part : Type where
   PA : Part -> SnocList JSON -> Part -- partial array
@@ -150,7 +151,7 @@ parameters {auto sk : SK q}
   part v (PA p sy)   = putStackAs (PA p (sy :< v)) AVal
   part v (PL p sy l) = putStackAs (PO p (sy :< (l,v))) OVal
   part v (PV sy)     = putStackAs (PV (sy :< v)) JIni
-  part v _           = putStackAs (PF v) Done
+  part v _           = putStackAs (PF v) JDone
 
   %inline
   onVal : JSON -> F1 q JST
@@ -164,16 +165,12 @@ parameters {auto sk : SK q}
      p      => part (JString s) p
 
   %inline
-  begin : (Part -> Part) -> JST -> F1 q JST
-  begin f st = getStack >>= \p => putStackAs (f p) st
-
-  %inline
   closeVal : F1 q JST
   closeVal =
     getStack >>= \case
       PO p sp => part (JObject $ sp <>> []) p
       PA p sp => part (JArray $ sp <>> []) p
-      _       => pure Done
+      _       => pure JDone
 
 --------------------------------------------------------------------------------
 -- Lexers
@@ -199,9 +196,9 @@ valTok x ts =
     , cexpr "false" (onVal $ JBool False)
     , conv (opt '-' >> decimal) (onVal . JInteger . integer)
     , read jsonDouble (onVal . JDouble . jdouble)
-    , copen '{' (begin (`PO` [<]) ONew)
-    , copen '[' (begin (`PA` [<]) ANew)
-    , copen' '"' Str
+    , copen '{' (modStackAs SK (`PO` [<]) ONew)
+    , copen '[' (modStackAs SK (`PA` [<]) ANew)
+    , copen' '"' JStr
     ] ++ ts
 
 codepoint : RExp True
@@ -224,16 +221,16 @@ strTok : DFA q JSz SK
 strTok =
   dfa
     [ ccloseStr '"' endStr
-    , read (plus jchar) (pushStr Str)
-    , cexpr #"\""# (pushStr Str "\"")
-    , cexpr #"\n"# (pushStr Str "\n")
-    , cexpr #"\f"# (pushStr Str "\f")
-    , cexpr #"\b"# (pushStr Str "\b")
-    , cexpr #"\r"# (pushStr Str "\r")
-    , cexpr #"\t"# (pushStr Str "\t")
-    , cexpr #"\\"# (pushStr Str "\\")
-    , cexpr #"\/"# (pushStr Str "\/")
-    , conv codepoint (pushStr Str . decode)
+    , read (plus jchar) (pushStr JStr)
+    , cexpr #"\""# (pushStr JStr "\"")
+    , cexpr #"\n"# (pushStr JStr "\n")
+    , cexpr #"\f"# (pushStr JStr "\f")
+    , cexpr #"\b"# (pushStr JStr "\b")
+    , cexpr #"\r"# (pushStr JStr "\r")
+    , cexpr #"\t"# (pushStr JStr "\t")
+    , cexpr #"\\"# (pushStr JStr "\\")
+    , cexpr #"\/"# (pushStr JStr "\/")
+    , conv codepoint (pushStr JStr . decode)
     ]
 
 --------------------------------------------------------------------------------
@@ -244,19 +241,19 @@ jsonTrans : Lex1 q JSz SK
 jsonTrans =
   lex1
     [ E JIni (valTok JIni [])
-    , E Done (spaced Done [])
+    , E JDone (spaced JDone [])
 
     , E ANew (valTok ANew [cclose ']' closeVal])
     , E ACom (valTok ACom [])
     , E AVal $ spaced AVal [cexpr' ',' ACom, cclose ']' closeVal]
 
-    , E ONew $ spaced ONew [cclose '}' closeVal, copen' '"' Str]
+    , E ONew $ spaced ONew [cclose '}' closeVal, copen' '"' JStr]
     , E OVal $ spaced OVal [cclose '}' closeVal, cexpr' ',' OCom]
-    , E OCom $ spaced OCom [copen' '"' Str]
+    , E OCom $ spaced OCom [copen' '"' JStr]
     , E OLbl $ spaced OLbl [cexpr' ':' OCol]
     , E OCol (valTok OCol [])
 
-    , E Str strTok
+    , E JStr strTok
     ]
 
 jsonErr : Arr32 JSz (SK q -> F1 q (BoundedErr Void))
@@ -270,12 +267,12 @@ jsonErr =
     , E OCom $ unclosedIfEOI "{" ["\""]
     , E OLbl $ unclosedIfEOI "{" [":"]
     , E OCol $ unclosedIfEOI "{" []
-    , E Str  $ unclosedIfNLorEOI "\"" []
+    , E JStr $ unclosedIfNLorEOI "\"" []
     ]
 
 jsonEOI : JST -> SK q -> F1 q (Either (BoundedErr Void) JSON)
 jsonEOI sk s t =
-  case sk == Done of
+  case sk == JDone of
     False => arrFail SK jsonErr sk s t
     True  => case getStack t of
       PF v # t => Right v # t
