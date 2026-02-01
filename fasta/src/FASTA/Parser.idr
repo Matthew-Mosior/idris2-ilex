@@ -299,23 +299,16 @@ parseFASTA = parseString fasta
 --          Streaming
 --------------------------------------------------------------------------------
 
-0 Prog : Type -> Type -> Type
-Prog o r = AsyncPull Poll o [ParseError Void, Errno] r
-
-covering
-runProg : Prog Void () -> IO ()
-runProg prog =
- let handled := handle [stderrLn . interpolate, stderrLn . interpolate] prog
-  in epollApp $ mpull handled
-
-streamFASTA : String -> Prog Void ()
+streamFASTA :  String
+            -> AsyncPull Poll Void [ParseError Void, Errno] ()
 streamFASTA pth =
      readBytes pth
   |> streamParse fasta (FileSrc pth)
   |> C.count
   |> printLnTo Stdout
 
-streamFASTAFiles : Prog String () -> Prog Void ()
+streamFASTAFiles :  AsyncPull Poll String [ParseError Void, Errno] ()
+                 -> AsyncPull Poll Void [ParseError Void, Errno] ()
 streamFASTAFiles pths =
      flatMap pths (\p => readBytes p |> streamParse fasta (FileSrc p))
   |> C.count
