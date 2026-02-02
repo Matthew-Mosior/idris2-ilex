@@ -23,8 +23,26 @@ import public Text.ILex
 
 public export
 data XMLValue : Type where
-  NL          : ByteString -> FASTAValue
+  NL                              : ByteString -> XMLValue
+  XMLDeclVersion                  : ByteString -> XMLValue
+  XMLDeclEncoding                 : ByteString -> XMLValue
+  XMLDeclStandalone               : Bool -> XMLValue
+  XMLDeclComment                  : ByteString -> XMLValue
+  XMLDeclProcessingInstruction    : ByteString -> XMLValue
+  XMLDocType                      : ByteString -> XMLValue
+  XMLDocTypeComment               : ByteString -> XMLValue
+  XMLDocTypeProcessingInstruction : ByteString -> XMLValue
+  XMLElementAttribute             : ByteString -> XMLValue
+  XMLElementCharData              : ByteString -> XMLValue
+  XMLElementComment               : ByteString -> XMLValue
+  XMLElementProcessingInstruction : ByteString -> XMLValue
 
 
+--------------------------------------------------------------------------------
+--          Parser State
+--------------------------------------------------------------------------------
+
+%runElab deriveParserState "XMLSz" "XMLST"
+  ["XMLIni", "XMLDeclS", "XMLDeclMisc", "XMLDeclMiscComment", "FHdrDone", "FD", "FDNL", "FEmpty", "FComplete"]
 
 %runElab derive "XMLValue" [Show,Eq]
