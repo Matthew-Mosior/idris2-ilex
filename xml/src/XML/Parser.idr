@@ -206,12 +206,12 @@ fastaEOI st x =
 --------------------------------------------------------------------------------
 
 export
-xml : P1 q (BoundedErr Void) XMLSz XMLSTCK FASTA
+xml : P1 q (BoundedErr Void) XMLSz XMLSTCK XMLDocument
 xml = P XMLIni (fastainit coordsys) fastaSteps snocChunk fastaErr fastaEOI
 
 export %inline
-parseFASTA : CoordinateSystem -> Origin -> String -> Either (ParseError Void) FASTA
-parseFASTA coordsys origin str = parseString (fasta coordsys) origin str
+parseFASTA : Origin -> String -> Either (ParseError Void) XMLDocument
+parseFASTA = parseString xml
 
 --------------------------------------------------------------------------------
 --          Streaming
