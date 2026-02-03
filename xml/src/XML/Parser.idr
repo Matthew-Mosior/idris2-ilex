@@ -23,19 +23,19 @@ import public Text.ILex
 
 public export
 data XMLValue : Type where
-  NL                              : ByteString -> XMLValue
-  XMLDeclVersion                  : ByteString -> XMLValue
-  XMLDeclEncoding                 : ByteString -> XMLValue
+  NL                              : String -> XMLValue
+  XMLDeclVersion                  : String -> XMLValue
+  XMLDeclEncoding                 : String -> XMLValue
   XMLDeclStandalone               : Bool -> XMLValue
-  XMLDeclComment                  : ByteString -> XMLValue
-  XMLDeclProcessingInstruction    : ByteString -> XMLValue
-  XMLDocType                      : ByteString -> XMLValue
-  XMLDocTypeComment               : ByteString -> XMLValue
-  XMLDocTypeProcessingInstruction : ByteString -> XMLValue
-  XMLElementAttribute             : ByteString -> XMLValue
-  XMLElementCharData              : ByteString -> XMLValue
-  XMLElementComment               : ByteString -> XMLValue
-  XMLElementProcessingInstruction : ByteString -> XMLValue
+  XMLDeclComment                  : String -> XMLValue
+  XMLDeclProcessingInstruction    : String -> XMLValue
+  XMLDocType                      : String -> XMLValue
+  XMLDocTypeComment               : String -> XMLValue
+  XMLDocTypeProcessingInstruction : String -> XMLValue
+  XMLElementAttribute             : String -> XMLValue
+  XMLElementCharData              : String -> XMLValue
+  XMLElementComment               : String -> XMLValue
+  XMLElementProcessingInstruction : String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLValues
@@ -115,7 +115,20 @@ xmlinit = T1.do
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "XMLSz" "XMLST"
-  ["XMLIni", "XMLDeclS", "XMLDeclMiscComment", "XMLDeclMiscProcessingInstruction", "XMLEmpty", "XMLComplete"]
+  [ "XMLIni"
+  , "XMLDeclVersionS"
+  , "XMLDeclVersionStrStart"
+  , "XMLDeclVersionStr"
+  ,""
+  , "XMLDeclEncodingStrStart"
+  , "XMLDeclStandaloneStrStart"
+  , "XMLDeclMiscCommentS"
+  , "XMLDeclMiscCommentStrStart"
+  , "XMLDeclMiscProcessingInstructionS"
+  , "XMLDeclMiscProcessingInstructionStrStart"
+  , "XMLEmpty"
+  , "XMLComplete"
+  ]
 
 --------------------------------------------------------------------------------
 --          Errors
@@ -195,44 +208,84 @@ onEOI = T1.do
 xmlInit : DFA q XMLSz XMLSTCK
 xmlInit =
   dfa
-    [ read (str "<?xml version={") (onXMLDeclVersion . XMLDeclVersion . fromString)
-    , read (str "<!--{") (onXMLDeclMiscComment . XMLDeclComment . fromString)
+    [ read (str "<?xml version=\"") (pure onXMLDeclVersionS)
+    , read (str "<!--") (pure onXMLDeclMiscCommentS)
+    , read (str "<?") (pure onXMLDeclMiscProcessingInstructionS)
     ]
 
-fastaHdrStrStart : DFA q FSz FSTCK
-fastaHdrStrStart =
+xmlDeclVersionS : DFA q XMLSz XMLSTCK
+xmlDeclVersionS =
   dfa
-    [ read dot (onFASTAValueHdrR . HeaderValue)
+    [ copen '"' (pure XMLDeclVersionStrStart)
     ]
 
-fastaHdrStrRest : DFA q FSz FSTCK
-fastaHdrStrRest =
+xmlDeclVersionStr : DFA q CSz CSTCK
+xmlDeclVersionStr =
   dfa
-    [ read dot (onFASTAValueHdrR . HeaderValue)
-    , conv linebreak (\bs => onNLFHdr bs)
+    [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
+    , read (plus $ dot && not '"') (pushStr XMLDeclVersionStr)
+    , conv linebreak (const $ pure NL)
     ]
 
-fastaFDInit : DFA q FSz FSTCK
-fastaFDInit =
+xmlDeclEncodingStandalone : DFA q XMLSz XMLSTCK
+xmlDeclEncodingStandalone =
   dfa
-    [ read adenine (\_ => onFASTAValueAdenine)
-    , read thymine (\_ => onFASTAValueThymine)
-    , read guanine (\_ => onFASTAValueGuanine)
-    , read cytosine (\_ => onFASTAValueCytosine)
+    [ read (str "encoding=") (pure onXMLDeclEncodingS)
+    , read (str "standalone=") (pure onXMLDeclStandaloneS)
     ]
 
-fastaFD : DFA q FSz FSTCK
-fastaFD =
+xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
+xmlDeclEncodingStr =
   dfa
-    [ conv linebreak (\bs => onNLFD bs)
-    , read adenine (\_ => onFASTAValueAdenine)
-    , read thymine (\_ => onFASTAValueThymine)
-    , read guanine (\_ => onFASTAValueGuanine)
-    , read cytosine (\_ => onFASTAValueCytosine)
+    [ copen '"' (pure XMLDeclEncodingStrStart)
     ]
 
-fastaSteps : Lex1 q FSz FSTCK
-fastaSteps =
+xmlDeclEncodingStr : DFA q CSz CSTCK
+xmlDeclEncodingStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDeclEncodingStr . XMLDeclEncoding
+    , read (plus $ dot && not '"') (pushStr XMLDeclEncodingStr)
+    , conv linebreak (const $ pure NL)
+    ]
+
+xmlDeclStandalone : DFA q XMLSz XMLSTCK
+xmlDeclStandalone =
+  dfa
+    [ read (opt (not (str "standalone="))) (onXMLDeclStandaloneStr . XMLDeclStandalone)
+    ]
+
+xmlDeclStandaloneStr : DFA q XMLSz XMLSTCK
+xmlDeclStandaloneStr =
+  dfa
+    [ read (plus $ dot && not '"') (onXMLDeclVersion . XMLDeclVersion)
+    ]
+
+
+
+
+
+
+xmlDeclMiscS : DFA q XMLSz XMLSTCK
+xmlDeclMiscS =
+  dfa
+    [ read (dot (not (str "encoding="))) (\_ => onXMLDeclEncodingStr)
+    [ read (opt (not ((str "standalone="))) (\_ => onXMLDeclStandaloneStr)
+    ]
+
+xmlDeclMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlDeclMiscCommentStr =
+  dfa
+    [ read (plus (dot $ not "-->")) (onXMLDeclVersion . XMLDeclVersion . fromString)
+    ]
+
+xmlDeclMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
+xmlDeclMiscProcessingInstructionStr =
+  dfa
+    [ read (plus (dot $ not "?>")) (onXMLDeclVersion . XMLDeclVersion . fromString)
+    ]
+
+xmlSteps : Lex1 q XMLSz XMLSTCK
+xmlSteps =
   lex1
     [ E XMLIni xmlInit
     , E FHdrToNLS fastaHdrStrStart
@@ -242,14 +295,14 @@ fastaSteps =
     , E FD fastaFD
     ]
 
-fastaEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) FASTA)
-fastaEOI st x =
+xmlEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
+xmlEOI st x =
   case st == FIni || st == FHdr || st == FEmpty || st == FBroken of
-    True  => arrFail FSTCK fastaErr st x
+    True  => arrFail XMLSTCK fastaErr st x
     False => T1.do
       _ <- onEOI
-      fasta <- getList x.fastalines
-      pure (Right fasta)
+      xml <- getList x.xmldoc
+      pure (Right xml)
 
 --------------------------------------------------------------------------------
 --          Parser
