@@ -210,24 +210,24 @@ xml : P1 q (BoundedErr Void) XMLSz XMLSTCK XMLDocument
 xml = P XMLIni (fastainit coordsys) fastaSteps snocChunk fastaErr fastaEOI
 
 export %inline
-parseFASTA : Origin -> String -> Either (ParseError Void) XMLDocument
-parseFASTA = parseString xml
+parseXML : Origin -> String -> Either (ParseError Void) XMLDocument
+parseXML = parseString xml
 
 --------------------------------------------------------------------------------
 --          Streaming
 --------------------------------------------------------------------------------
 
-streamFASTA :  String
-            -> AsyncPull Poll Void [ParseError Void, Errno] ()
-streamFASTA pth =
+streamXML :  String
+          -> AsyncPull Poll Void [ParseError Void, Errno] ()
+streamXML pth =
      readBytes pth
   |> streamParse xml (FileSrc pth)
   |> C.count
   |> printLnTo Stdout
 
-streamFASTAFiles :  AsyncPull Poll String [ParseError Void, Errno] ()
-                 -> AsyncPull Poll Void [ParseError Void, Errno] ()
-streamFASTAFiles coordsys pths =
+streamXMLDocuments :  AsyncPull Poll String [ParseError Void, Errno] ()
+                   -> AsyncPull Poll Void [ParseError Void, Errno] ()
+streamXMLDocuments pths =
      flatMap pths (\p => readBytes p |> streamParse xml (FileSrc p))
   |> C.count
   |> printLnTo Stdout
