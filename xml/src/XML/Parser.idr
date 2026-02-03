@@ -115,7 +115,7 @@ xmlinit = T1.do
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "XMLSz" "XMLST"
-  ["XMLIni", "XMLDeclS", "XMLDeclMisc", "XMLDeclMiscComment", "FHdrDone", "FD", "FDNL", "XMLEmpty", "XMLComplete"]
+  ["XMLIni", "XMLDeclS", "XMLDeclMiscComment", "XMLDeclMiscProcessingInstruction", "XMLEmpty", "XMLComplete"]
 
 --------------------------------------------------------------------------------
 --          Errors
@@ -192,10 +192,11 @@ onEOI = T1.do
   push1 x.fastalines (MkFASTALine ln fvs)
   pure (Right FComplete)
 
-fastaInit : DFA q FSz FSTCK
-fastaInit =
+xmlInit : DFA q XMLSz XMLSTCK
+xmlInit =
   dfa
-    [ read '>' (\_ => onFASTAValueHdrS HeaderStart)
+    [ read (str "<?xml version={") (onXMLDeclVersion . XMLDeclVersion . fromString)
+    , read (str "<!--{") (onXMLDeclMiscComment . XMLDeclComment . fromString)
     ]
 
 fastaHdrStrStart : DFA q FSz FSTCK
@@ -233,7 +234,7 @@ fastaFD =
 fastaSteps : Lex1 q FSz FSTCK
 fastaSteps =
   lex1
-    [ E FIni fastaInit
+    [ E XMLIni xmlInit
     , E FHdrToNLS fastaHdrStrStart
     , E FHdrToNLR fastaHdrStrRest
     , E FHdrDone fastaFDInit
