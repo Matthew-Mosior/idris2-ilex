@@ -207,7 +207,7 @@ fastaEOI st x =
 
 export
 xml : P1 q (BoundedErr Void) XMLSz XMLSTCK XMLDocument
-xml = P XMLIni (fastainit coordsys) fastaSteps snocChunk fastaErr fastaEOI
+xml = P XMLIni xmlinit xmlSteps snocChunk xmlErr xmlEOI
 
 export %inline
 parseXML : Origin -> String -> Either (ParseError Void) XMLDocument
