@@ -65,7 +65,7 @@ XMLDocument = List XMLValues
 
 public export
 record XMLSTCK (q : Type) where
-  constructor F
+  constructor XML
   line      : Ref q Nat
   col       : Ref q Nat
   psns      : Ref q (SnocList Position)
@@ -108,7 +108,7 @@ xmlinit = T1.do
   xmlvs <- ref1 [<]
   xmlls <- ref1 [<]
   by <- ref1 ""
-  pure (F l c bs ss er xmlvs xmlls fc by)
+  pure (XML l c bs ss er xmlvs xmlls fc by)
 
 --------------------------------------------------------------------------------
 --          Parser State
@@ -116,8 +116,6 @@ xmlinit = T1.do
 
 %runElab deriveParserState "XMLSz" "XMLST"
   ["XMLIni", "XMLDeclS", "XMLDeclMisc", "XMLDeclMiscComment", "FHdrDone", "FD", "FDNL", "XMLEmpty", "XMLComplete"]
-
-%runElab derive "XMLValue" [Show,Eq]
 
 --------------------------------------------------------------------------------
 --          Errors
