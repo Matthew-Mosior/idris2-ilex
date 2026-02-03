@@ -63,6 +63,57 @@ XMLDocument = List XMLValues
 --          Parser State
 --------------------------------------------------------------------------------
 
+public export
+record XMLSTCK (q : Type) where
+  constructor F
+  line      : Ref q Nat
+  col       : Ref q Nat
+  psns      : Ref q (SnocList Position)
+  strs      : Ref q (SnocList String)
+  err       : Ref q (Maybe $ BoundedErr Void)
+  xmlvalues : Ref q (SnocList XMLValue)
+  xmldoc    : Ref q (SnocList XMLValues)
+  bytes     : Ref q ByteString
+
+export %inline
+HasPosition XMLSTCK where
+  line      = FSTCK.line
+  col       = FSTCK.col
+  positions = FSTCK.psns
+
+export %inline
+HasError XMLSTCK Void where
+  error = err
+
+export %inline
+HasStringLits XMLSTCK where
+  strings = strs
+
+export %inline
+HasStack XMLSTCK (SnocList XMLValues) where
+  stack = xmldoc
+
+export %inline
+HasBytes XMLSTCK where
+  bytes = XMLSTCK.bytes
+
+export
+xmlinit : F1 q (XMLSTCK q)
+xmlinit = T1.do
+  l  <- ref1 Z
+  c  <- ref1 Z
+  bs <- ref1 [<]
+  ss <- ref1 [<]
+  er <- ref1 Nothing
+  xmlvs <- ref1 [<]
+  xmlls <- ref1 [<]
+  by <- ref1 ""
+  pure (F l c bs ss er xmlvs xmlls fc by)
+
+--------------------------------------------------------------------------------
+--          Parser State
+--------------------------------------------------------------------------------
+
 %runElab deriveParserState "XMLSz" "XMLST"
   ["XMLIni", "XMLDeclS", "XMLDeclMisc", "XMLDeclMiscComment", "FHdrDone", "FD", "FDNL", "XMLEmpty", "XMLComplete"]
 
