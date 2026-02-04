@@ -79,6 +79,7 @@ record XMLSTCK (q : Type) where
   psns      : Ref q (SnocList Position)
   strs      : Ref q (SnocList String)
   err       : Ref q (Maybe $ BoundedErr Void)
+  xmltags   : Ref q (SnocList String)
   xmlvalues : Ref q (SnocList XMLValue)
   xmldoc    : Ref q (SnocList XMLValues)
   bytes     : Ref q ByteString
@@ -113,10 +114,11 @@ xmlinit = T1.do
   bs <- ref1 [<]
   ss <- ref1 [<]
   er <- ref1 Nothing
+  xmlt <- ref1 [<]
   xmlvs <- ref1 [<]
   xmlls <- ref1 [<]
   by <- ref1 ""
-  pure (XML l c bs ss er xmlvs xmlls fc by)
+  pure (XML l c bs ss er xmlt xmlvs xmlls fc by)
 
 --------------------------------------------------------------------------------
 --          Parser State
@@ -219,7 +221,7 @@ xmlInit =
     [ read (str "<?xml version=") (pure onXMLDeclVersionS)
     , copen (str "<!--") (pure onXMLPrologMiscCommentStr)
     , copen (str "<?") (pure onXMLPrologMiscProcessingInstructionStr)
-    , copen ('<' >> plus $ dot && not digit && not '-' && not '.' && not ' ') (pure )
+    , copen '<' (pure onXMLElementStartTagStr)
     ]
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
