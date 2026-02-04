@@ -23,6 +23,7 @@ import public Text.ILex
 
 public export
 data XMLValue : Type where
+  XMLDeclVersion                        : String -> XMLValue
   XMLDeclEncoding                       : String -> XMLValue
   XMLDeclStandalone                     : Bool -> XMLValue
   XMLDeclComment                        : String -> XMLValue
