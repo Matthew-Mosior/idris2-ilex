@@ -77,9 +77,9 @@ record XMLSTCK (q : Type) where
 
 export %inline
 HasPosition XMLSTCK where
-  line      = FSTCK.line
-  col       = FSTCK.col
-  positions = FSTCK.psns
+  line      = XMLSTCK.line
+  col       = XMLSTCK.col
+  positions = XMLSTCK.psns
 
 export %inline
 HasError XMLSTCK Void where
@@ -199,18 +199,18 @@ onNLFD v = T1.do
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
   incline 1
-  fvs@(_::_) <- getList x.fastavalues
-    | [] => arrFail FSTCK fastaErr FEmpty x
+  xmlvs@(_::_) <- getList x.xmlvalues
+    | [] => arrFail XMLSTCK xmlErr XMLEmpty x
   ln <- read1 x.line
-  push1 x.fastalines (MkFASTALine ln fvs)
-  pure (Right FComplete)
+  push1 x.xmldoc (MkXMLValues ln xmlvs)
+  pure (Right XMLComplete)
 
 xmlInit : DFA q XMLSz XMLSTCK
 xmlInit =
   dfa
-    [ read (str "<?xml version=\"") (pure onXMLDeclVersionS)
-    , read (str "<!--") (pure onXMLDeclMiscCommentS)
-    , read (str "<?") (pure onXMLDeclMiscProcessingInstructionS)
+    [ read (str "<?xml version=") (pure onXMLDeclVersionS)
+    , copen (str "<!--") (pure onXMLPrologMiscCommentStr)
+    , copen (str "<?") (pure onXMLPrologMiscProcessingInstructionStr)
     ]
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
@@ -260,6 +260,20 @@ xmlDeclStandaloneStr =
     [ cclose '"' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
     , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
     , conv linebreak (const $ pure NL)
+    ]
+
+xmlPrologMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlPrologMiscCommentStr =
+  dfa
+    [ cclose '-->' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
+    , read (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
+    ]
+
+xmlPrologMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
+xmlPrologMiscProcessingInstructionStr =
+  dfa
+    [ cclose '?>' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
+    , read (plus $ dot && not "?>") (pushStr XMLDeclStandaloneStr)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
