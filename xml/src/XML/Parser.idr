@@ -120,11 +120,11 @@ xmlinit = T1.do
   bs <- ref1 [<]
   ss <- ref1 [<]
   er <- ref1 Nothing
-  xmlt <- ref1 [<]
-  xmlvs <- ref1 [<]
-  xmlls <- ref1 [<]
+  xmldl <- ref1 [<]
+  xmldt <- ref1 [<]
+  xmlelmts <- ref1 [<]
   by <- ref1 ""
-  pure (XML l c bs ss er xmlt xmlvs xmlls fc by)
+  pure (XML l c bs ss er xmldl xmldt xmlelmts by)
 
 --------------------------------------------------------------------------------
 --          Parser State
@@ -135,13 +135,18 @@ xmlinit = T1.do
   , "XMLDeclVersionS"
   , "XMLDeclVersionStrStart"
   , "XMLDeclVersionStr"
-  ,""
   , "XMLDeclEncodingStrStart"
   , "XMLDeclStandaloneStrStart"
   , "XMLDeclMiscCommentS"
   , "XMLDeclMiscCommentStrStart"
   , "XMLDeclMiscProcessingInstructionS"
   , "XMLDeclMiscProcessingInstructionStrStart"
+  , "XMLDocTypeSystem"
+  , "XMLDocTypePublic"
+  , "XMLDocTypeComment"
+  , "XMLDocTypeProcessingInstruction"
+  , "XMLDocTypeInternalSubset"
+
   , "XMLEmpty"
   , "XMLComplete"
   ]
