@@ -23,13 +23,22 @@ import public Text.ILex
 
 public export
 data XMLValue : Type where
-  XMLDeclEncoding                 : String -> XMLValue
-  XMLDeclStandalone               : Bool -> XMLValue
-  XMLDeclComment                  : String -> XMLValue
-  XMLDeclProcessingInstruction    : String -> XMLValue
-  XMLDocType                      : String -> XMLValue
-  XMLDocTypeComment               : String -> XMLValue
-  XMLDocTypeProcessingInstruction : String -> XMLValue
+  XMLDeclEncoding                  : String -> XMLValue
+  XMLDeclStandalone                : Bool -> XMLValue
+  XMLDeclComment                   : String -> XMLValue
+  XMLDeclProcessingInstruction     : String -> String -> XMLValue
+  XMLDocTypeSystem                 : String -> XMLValue
+  XMLDocTypePublic                 : String -> String -> XMLValue
+  XMLDocTypeComment                : String -> XMLValue
+  XMLDocTypeProcessingInstruction  : String -> String -> XMLValue
+  XMLDocTypeInternalSubset         : String -> XMLValue
+  XMLElementEmptyTag               : String -> XMLValue
+  XMLElementStartTagName           : String -> XMLValue
+  XMLElementStartTagAttributeName  : String -> XMLValue
+  XMLElementStartTagAttributeValue : String -> XMLValue
+  XMLElement
+
+  
   XMLElementAttribute             : QName -> String -> XMLValue
   XMLElementCharData              : Bool -> String -> Bool -> XMLValue
   XMLElementComment               : String -> XMLValue
