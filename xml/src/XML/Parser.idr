@@ -41,6 +41,8 @@ data XMLValue : Type where
   XMLElementContentProcessingIntruction : String -> String -> XMLValue
   XMLElementContentCDATA                : String -> XMLValue
   XMLElementEndTag                      : String -> XMLValue
+  XMLMiscComment                        : String -> XMLValue
+  XMLMiscProcessingInstruction          : String -> String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLValues
@@ -139,12 +141,12 @@ xmlinit = T1.do
 --          Errors
 --------------------------------------------------------------------------------
 
-fastaErr : Arr32 FSz (FSTCK q -> F1 q (BoundedErr Void))
-fastaErr =
-  arr32 FSz (unexpected [])
-    [ E FBroken $ unexpected ["character other than '>'"]
-    , E FEmpty $ unexpected ["sequence data"]
-    , E FHdr $ unexpected ["sequence line"]
+xmlErr : Arr32 XMLSz (XMLSTCK q -> F1 q (BoundedErr Void))
+xmlErr =
+  arr32 XMLSz (unexpected [])
+    [ E XMLBroken $ unexpected ["character other than '>'"]
+    , E XMLEmpty $ unexpected ["sequence data"]
+    , E XMLHdr $ unexpected ["sequence line"]
     ]
 
 --------------------------------------------------------------------------------
