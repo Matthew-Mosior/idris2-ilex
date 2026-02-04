@@ -37,6 +37,8 @@ data XMLValue : Type where
   XMLElementStartTagName                : String -> XMLValue
   XMLElementStartTagAttributeName       : String -> XMLValue
   XMLElementStartTagAttributeValue      : String -> XMLValue
+  XMLElementStartTagNamespceName        : String -> XMLValue
+  XMLElementStartTagNamespaceValue      : String -> XMLValue
   XMLElementContentCharData             : String -> XMLValue
   XMLElementContentComment              : String -> XMLValue
   XMLElementContentProcessingIntruction : String -> String -> XMLValue
