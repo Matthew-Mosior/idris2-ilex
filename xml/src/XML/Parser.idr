@@ -219,7 +219,7 @@ xmlDeclVersionS =
     [ copen '"' (pure XMLDeclVersionStrStart)
     ]
 
-xmlDeclVersionStr : DFA q CSz CSTCK
+xmlDeclVersionStr : DFA q XMLSz XMLSTCK
 xmlDeclVersionStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
