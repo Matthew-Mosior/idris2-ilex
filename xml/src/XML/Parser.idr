@@ -227,6 +227,12 @@ xmlDeclVersionStr =
     , conv linebreak (const $ pure NL)
     ]
 
+xmlDeclVersionEnd : DFA q XMLSz XMLSTCK
+xmlDeclVersionEnd =
+  dfa
+    [ read (plus ' ') (pure onXMLDeclEncodingStandaloneS)
+    ]
+
 xmlDeclEncodingStandalone : DFA q XMLSz XMLSTCK
 xmlDeclEncodingStandalone =
   dfa
@@ -260,6 +266,12 @@ xmlDeclStandaloneStr =
     [ cclose '"' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
     , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
     , conv linebreak (const $ pure NL)
+    ]
+
+xmlDeclEnd : DFA q XMLSz XMLSTCK
+xmlDeclEnd =
+  dfa
+    [ read "?>" (pure XMLDeclComplete)
     ]
 
 xmlPrologMiscCommentStr : DFA q XMLSz XMLSTCK
