@@ -23,26 +23,24 @@ import public Text.ILex
 
 public export
 data XMLValue : Type where
-  XMLDeclEncoding                  : String -> XMLValue
-  XMLDeclStandalone                : Bool -> XMLValue
-  XMLDeclComment                   : String -> XMLValue
-  XMLDeclProcessingInstruction     : String -> String -> XMLValue
-  XMLDocTypeSystem                 : String -> XMLValue
-  XMLDocTypePublic                 : String -> String -> XMLValue
-  XMLDocTypeComment                : String -> XMLValue
-  XMLDocTypeProcessingInstruction  : String -> String -> XMLValue
-  XMLDocTypeInternalSubset         : String -> XMLValue
-  XMLElementEmptyTag               : String -> XMLValue
-  XMLElementStartTagName           : String -> XMLValue
-  XMLElementStartTagAttributeName  : String -> XMLValue
-  XMLElementStartTagAttributeValue : String -> XMLValue
-  XMLElement
-
-  
-  XMLElementAttribute             : QName -> String -> XMLValue
-  XMLElementCharData              : Bool -> String -> Bool -> XMLValue
-  XMLElementComment               : String -> XMLValue
-  XMLElementProcessingInstruction : String -> String -> XMLValue
+  XMLDeclEncoding                       : String -> XMLValue
+  XMLDeclStandalone                     : Bool -> XMLValue
+  XMLDeclComment                        : String -> XMLValue
+  XMLDeclProcessingInstruction          : String -> String -> XMLValue
+  XMLDocTypeSystem                      : String -> XMLValue
+  XMLDocTypePublic                      : String -> String -> XMLValue
+  XMLDocTypeComment                     : String -> XMLValue
+  XMLDocTypeProcessingInstruction       : String -> String -> XMLValue
+  XMLDocTypeInternalSubset              : String -> XMLValue
+  XMLElementEmptyTag                    : String -> XMLValue
+  XMLElementStartTagName                : String -> XMLValue
+  XMLElementStartTagAttributeName       : String -> XMLValue
+  XMLElementStartTagAttributeValue      : String -> XMLValue
+  XMLElementContentCharData             : String -> XMLValue
+  XMLElementContentComment              : String -> XMLValue
+  XMLElementContentProcessingIntruction : String -> String -> XMLValue
+  XMLElementContentCDATA                : String -> XMLValue
+  XMLElementEndTag                      : String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLValues
