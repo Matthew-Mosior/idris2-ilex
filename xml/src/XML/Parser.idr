@@ -18,21 +18,35 @@ import public Text.ILex
 %language ElabReflection
 
 --------------------------------------------------------------------------------
---          XMLValue
+--          XMLDeclValue
 --------------------------------------------------------------------------------
 
 public export
-data XMLValue : Type where
+data XMLDeclValue : Type where
   XMLDeclVersion                        : String -> XMLValue
   XMLDeclEncoding                       : String -> XMLValue
   XMLDeclStandalone                     : Bool -> XMLValue
   XMLDeclComment                        : String -> XMLValue
   XMLDeclProcessingInstruction          : String -> String -> XMLValue
+
+--------------------------------------------------------------------------------
+--          XMLDocTypeValue
+--------------------------------------------------------------------------------
+
+public export
+data XMLDocTypeValue : Type where
   XMLDocTypeSystem                      : String -> XMLValue
   XMLDocTypePublic                      : String -> String -> XMLValue
   XMLDocTypeComment                     : String -> XMLValue
   XMLDocTypeProcessingInstruction       : String -> String -> XMLValue
   XMLDocTypeInternalSubset              : String -> XMLValue
+
+--------------------------------------------------------------------------------
+--          XMLElementValue
+--------------------------------------------------------------------------------
+
+public export
+data XMLElementValue : Type where
   XMLElementEmptyTag                    : String -> XMLValue
   XMLElementStartTagName                : String -> XMLValue
   XMLElementStartTagAttributeName       : String -> XMLValue
@@ -44,30 +58,24 @@ data XMLValue : Type where
   XMLElementContentProcessingIntruction : String -> String -> XMLValue
   XMLElementContentCDATA                : String -> XMLValue
   XMLElementEndTag                      : String -> XMLValue
-  XMLMiscComment                        : String -> XMLValue
-  XMLMiscProcessingInstruction          : String -> String -> XMLValue
-
---------------------------------------------------------------------------------
---          XMLValues
---------------------------------------------------------------------------------
-
-public export
-record XMLValues where
-  constructor MkXMLValues
-  nr     : Nat
-  values : List XMLValue
-
-%runElab derive "XMLValues" [Show,Eq]
-
-Interpolation XMLValues where interpolate = show
+  XMLElementComment                     : String -> XMLValue
+  XMLElementProcessingInstruction       : String -> String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
 --------------------------------------------------------------------------------
 
 public export
-0 XMLDocument : Type
-XMLDocument = List XMLValues
+record XMLDocument where
+  constructor MkXMLDocument
+  nr       : Nat
+  decl     : Maybe (List XMLDeclValue)
+  doctype  : Maybe (List XMLDocTypeValue)
+  elements : List XMLElementValue
+
+%runElab derive "XMLDocument" [Show,Eq]
+
+Interpolation XMLValues where interpolate = show
 
 --------------------------------------------------------------------------------
 --          Parser State
@@ -76,15 +84,15 @@ XMLDocument = List XMLValues
 public export
 record XMLSTCK (q : Type) where
   constructor XML
-  line      : Ref q Nat
-  col       : Ref q Nat
-  psns      : Ref q (SnocList Position)
-  strs      : Ref q (SnocList String)
-  err       : Ref q (Maybe $ BoundedErr Void)
-  xmltags   : Ref q (SnocList String)
-  xmlvalues : Ref q (SnocList XMLValue)
-  xmldoc    : Ref q (SnocList XMLValues)
-  bytes     : Ref q ByteString
+  line        : Ref q Nat
+  col         : Ref q Nat
+  psns        : Ref q (SnocList Position)
+  strs        : Ref q (SnocList String)
+  err         : Ref q (Maybe $ BoundedErr Void)
+  xmldecl     : Ref q (SnocList XMLDeclValue)
+  xmldoctype  : Ref q (SnocList XMLDocTypeValue)
+  xmlelements : Ref q (SnocList XMLElementValue)
+  bytes       : Ref q ByteString
 
 export %inline
 HasPosition XMLSTCK where
@@ -99,10 +107,6 @@ HasError XMLSTCK Void where
 export %inline
 HasStringLits XMLSTCK where
   strings = strs
-
-export %inline
-HasStack XMLSTCK (SnocList XMLValues) where
-  stack = xmldoc
 
 export %inline
 HasBytes XMLSTCK where
