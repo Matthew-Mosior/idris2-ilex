@@ -234,13 +234,13 @@ xmlDeclEncodingStandalone =
     , read (str "standalone=") (pure onXMLDeclStandaloneS)
     ]
 
-xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
-xmlDeclEncodingStr =
+xmlDeclEncodingS : DFA q XMLSz XMLSTCK
+xmlDeclEncodingS =
   dfa
     [ copen '"' (pure XMLDeclEncodingStrStart)
     ]
 
-xmlDeclEncodingStr : DFA q CSz CSTCK
+xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
 xmlDeclEncodingStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDeclEncodingStr . XMLDeclEncoding
@@ -248,40 +248,18 @@ xmlDeclEncodingStr =
     , conv linebreak (const $ pure NL)
     ]
 
-xmlDeclStandalone : DFA q XMLSz XMLSTCK
-xmlDeclStandalone =
+xmlDeclStandaloneS : DFA q XMLSz XMLSTCK
+xmlDeclStandaloneS =
   dfa
-    [ read (opt (not (str "standalone="))) (onXMLDeclStandaloneStr . XMLDeclStandalone)
+    [ copen '"' (pure XMLDeclEncodingStrStart)
     ]
 
 xmlDeclStandaloneStr : DFA q XMLSz XMLSTCK
 xmlDeclStandaloneStr =
   dfa
-    [ read (plus $ dot && not '"') (onXMLDeclVersion . XMLDeclVersion)
-    ]
-
-
-
-
-
-
-xmlDeclMiscS : DFA q XMLSz XMLSTCK
-xmlDeclMiscS =
-  dfa
-    [ read (dot (not (str "encoding="))) (\_ => onXMLDeclEncodingStr)
-    [ read (opt (not ((str "standalone="))) (\_ => onXMLDeclStandaloneStr)
-    ]
-
-xmlDeclMiscCommentStr : DFA q XMLSz XMLSTCK
-xmlDeclMiscCommentStr =
-  dfa
-    [ read (plus (dot $ not "-->")) (onXMLDeclVersion . XMLDeclVersion . fromString)
-    ]
-
-xmlDeclMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
-xmlDeclMiscProcessingInstructionStr =
-  dfa
-    [ read (plus (dot $ not "?>")) (onXMLDeclVersion . XMLDeclVersion . fromString)
+    [ cclose '"' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
+    , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
+    , conv linebreak (const $ pure NL)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
