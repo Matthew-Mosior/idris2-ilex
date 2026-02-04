@@ -18,6 +18,13 @@ import public Text.ILex
 %language ElabReflection
 
 --------------------------------------------------------------------------------
+--          Misc
+--------------------------------------------------------------------------------
+
+data Misc = Comment String
+          | ProcessingInstruction String String
+
+--------------------------------------------------------------------------------
 --          XMLDecl
 --------------------------------------------------------------------------------
 
@@ -42,6 +49,17 @@ data DocType : Type where
   MkDoctype :  (name : String)
             -> (externalid : Maybe ExternalId)
             -> DocType
+
+--------------------------------------------------------------------------------
+--          XMLProlog
+--------------------------------------------------------------------------------
+
+data XMLProlog : Type where
+  MkXMLProlog :  (xmldecl : Maybe XMLDecl)
+              -> (xmldeclmisc : Maybe Misc)
+              -> (doctype : Maybe DocType)
+              -> (doctypemisc : List Misc)
+              -> XMLProlog
   
 --------------------------------------------------------------------------------
 --          Name
@@ -78,13 +96,6 @@ data CharData : Type where
               -> CharData
 
 --------------------------------------------------------------------------------
---          Misc
---------------------------------------------------------------------------------
-
-data Misc = Comment String
-          | ProcessingInstruction String String
-
---------------------------------------------------------------------------------
 --          Element
 --------------------------------------------------------------------------------
 
@@ -97,8 +108,12 @@ data Element = EmptyElem QName (List Attribute)
 
 public export
 data XMLValue : Type where
-  NL                              : String -> XMLValue
-  XMLDeclVersion                  : String -> XMLValue
+  XNL     : String -> XMLValue
+  XProlog : XMLProlog -> XMLValue
+  XRoot   : Element -> XMLValue
+  XMisc   : List Misc -> XMLValue  
+
+  
   XMLDeclEncoding                 : String -> XMLValue
   XMLDeclStandalone               : Bool -> XMLValue
   XMLDeclComment                  : String -> XMLValue
