@@ -301,6 +301,13 @@ xmlPrologMiscProcessingInstructionStr =
     , read (plus $ dot && not "?>") (pushStr XMLDeclStandaloneStr)
     ]
 
+xmlElementStartTagStr : DFA q XMLSz XMLSTCK
+xmlElementStartTagStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
+    , read (plus $ dot && not spaceSeparator) (pushStr XMLDeclVersionStr)
+    ]
+
 xmlSteps : Lex1 q XMLSz XMLSTCK
 xmlSteps =
   lex1
