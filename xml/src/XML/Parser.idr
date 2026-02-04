@@ -18,102 +18,11 @@ import public Text.ILex
 %language ElabReflection
 
 --------------------------------------------------------------------------------
---          Misc
---------------------------------------------------------------------------------
-
-data Misc = Comment String
-          | ProcessingInstruction String String
-
---------------------------------------------------------------------------------
---          XMLDecl
---------------------------------------------------------------------------------
-
-data XMLDecl : Type where
-  MkXMLDecl :  (version : String)
-            -> (encoding : Maybe String)
-            -> (standalone : Maybe Bool)
-            -> XMLDecl
-
---------------------------------------------------------------------------------
---          ExternalId
---------------------------------------------------------------------------------
-
-data ExternalId = System String
-                | Public String String
-
---------------------------------------------------------------------------------
---          DocType
---------------------------------------------------------------------------------
-
-data DocType : Type where
-  MkDoctype :  (name : String)
-            -> (externalid : Maybe ExternalId)
-            -> DocType
-
---------------------------------------------------------------------------------
---          XMLProlog
---------------------------------------------------------------------------------
-
-data XMLProlog : Type where
-  MkXMLProlog :  (xmldecl : Maybe XMLDecl)
-              -> (xmldeclmisc : Maybe Misc)
-              -> (doctype : Maybe DocType)
-              -> (doctypemisc : List Misc)
-              -> XMLProlog
-  
---------------------------------------------------------------------------------
---          Name
---------------------------------------------------------------------------------
-
-data Name = MkName String
-
---------------------------------------------------------------------------------
---          QName
---------------------------------------------------------------------------------
-
-data QName : Type where
-  MkQName :  (namespaceprefix : Name)
-          -> (localpart : Name)
-          -> QName
-
---------------------------------------------------------------------------------
---          Attribute
---------------------------------------------------------------------------------
-
-data Attribute : Type where
-  MkAttribute :  (name : QName)
-              -> (value : String)
-              -> Attribute
-
---------------------------------------------------------------------------------
---          CharData
---------------------------------------------------------------------------------
-
-data CharData : Type where
-  MkCharData :   (prespace : Bool)
-              -> (cdata : String)
-              -> (postspace : Bool)
-              -> CharData
-
---------------------------------------------------------------------------------
---          Element
---------------------------------------------------------------------------------
-
-data Element = EmptyElem QName (List Attribute)
-             | Elem QName (List Attribute) (Either CharData (Either Misc Element))
-
---------------------------------------------------------------------------------
 --          XMLValue
 --------------------------------------------------------------------------------
 
 public export
 data XMLValue : Type where
-  XNL     : String -> XMLValue
-  XProlog : XMLProlog -> XMLValue
-  XRoot   : Element -> XMLValue
-  XMisc   : List Misc -> XMLValue  
-
-  
   XMLDeclEncoding                 : String -> XMLValue
   XMLDeclStandalone               : Bool -> XMLValue
   XMLDeclComment                  : String -> XMLValue
@@ -121,10 +30,10 @@ data XMLValue : Type where
   XMLDocType                      : String -> XMLValue
   XMLDocTypeComment               : String -> XMLValue
   XMLDocTypeProcessingInstruction : String -> XMLValue
-  XMLElementAttribute             : (String -> XMLValue
-  XMLElementCharData              : String -> XMLValue
+  XMLElementAttribute             : QName -> String -> XMLValue
+  XMLElementCharData              : Bool -> String -> Bool -> XMLValue
   XMLElementComment               : String -> XMLValue
-  XMLElementProcessingInstruction : String -> XMLValue
+  XMLElementProcessingInstruction : String -> String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLValues
