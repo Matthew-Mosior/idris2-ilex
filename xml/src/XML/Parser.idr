@@ -71,7 +71,7 @@ record XMLDocument where
   nr       : Nat
   decl     : Maybe (List XMLDeclValue)
   doctype  : Maybe (List XMLDocTypeValue)
-  elements : List XMLElementValue
+  elements : List (List XMLElementValue)
 
 %runElab derive "XMLDocument" [Show,Eq]
 
