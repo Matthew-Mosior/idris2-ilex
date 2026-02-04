@@ -219,6 +219,7 @@ xmlInit =
     [ read (str "<?xml version=") (pure onXMLDeclVersionS)
     , copen (str "<!--") (pure onXMLPrologMiscCommentStr)
     , copen (str "<?") (pure onXMLPrologMiscProcessingInstructionStr)
+    , copen ('<' >> plus $ dot && not digit && not '-' && not '.' && not ' ') (pure )
     ]
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
@@ -279,7 +280,7 @@ xmlDeclStandaloneStr =
 xmlDeclEnd : DFA q XMLSz XMLSTCK
 xmlDeclEnd =
   dfa
-    [ read "?>" (pure XMLDeclComplete)
+    [ read (str "?>") (pure XMLDeclComplete)
     ]
 
 xmlPrologMiscCommentStr : DFA q XMLSz XMLSTCK
