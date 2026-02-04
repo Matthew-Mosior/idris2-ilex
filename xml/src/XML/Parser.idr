@@ -287,7 +287,7 @@ xmlSteps =
     , E FD fastaFD
     ]
 
-xmlEOI : FST -> FSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
+xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
 xmlEOI st x =
   case st == FIni || st == FHdr || st == FEmpty || st == FBroken of
     True  => arrFail XMLSTCK fastaErr st x
