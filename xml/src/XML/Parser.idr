@@ -68,7 +68,6 @@ data XMLElementValue : Type where
 public export
 record XMLDocument where
   constructor MkXMLDocument
-  nr       : Nat
   decl     : Maybe (List XMLDeclValue)
   doctype  : Maybe (List XMLDocTypeValue)
   elements : List (List XMLElementValue)
