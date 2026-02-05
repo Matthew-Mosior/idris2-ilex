@@ -23,11 +23,11 @@ import public Text.ILex
 
 public export
 data XMLDeclValue : Type where
-  XMLDeclVersion                        : String -> XMLValue
-  XMLDeclEncoding                       : String -> XMLValue
-  XMLDeclStandalone                     : Bool -> XMLValue
-  XMLDeclComment                        : String -> XMLValue
-  XMLDeclProcessingInstruction          : String -> String -> XMLValue
+  XMLDeclVersion               : String -> XMLValue
+  XMLDeclEncoding              : String -> XMLValue
+  XMLDeclStandalone            : Bool -> XMLValue
+  XMLDeclComment               : String -> XMLValue
+  XMLDeclProcessingInstruction : String -> String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLDocTypeValue
@@ -35,11 +35,11 @@ data XMLDeclValue : Type where
 
 public export
 data XMLDocTypeValue : Type where
-  XMLDocTypeSystem                      : String -> XMLValue
-  XMLDocTypePublic                      : String -> String -> XMLValue
-  XMLDocTypeComment                     : String -> XMLValue
-  XMLDocTypeProcessingInstruction       : String -> String -> XMLValue
-  XMLDocTypeInternalSubset              : String -> XMLValue
+  XMLDocTypeSystem                : String -> XMLValue
+  XMLDocTypePublic                : String -> String -> XMLValue
+  XMLDocTypeComment               : String -> XMLValue
+  XMLDocTypeProcessingInstruction : String -> String -> XMLValue
+  XMLDocTypeInternalSubset        : String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
