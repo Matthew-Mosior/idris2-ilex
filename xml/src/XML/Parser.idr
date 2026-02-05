@@ -131,6 +131,8 @@ xmlinit = T1.do
 
 %runElab deriveParserState "XMLSz" "XMLST"
   [ "XMLIni"
+  , "XMLEmpty"
+  , "XMLComplete"
   , "XMLDeclVersionS"
   , "XMLDeclVersionStrStart"
   , "XMLDeclVersionStr"
@@ -145,9 +147,19 @@ xmlinit = T1.do
   , "XMLDocTypeComment"
   , "XMLDocTypeProcessingInstruction"
   , "XMLDocTypeInternalSubset"
-
-  , "XMLEmpty"
-  , "XMLComplete"
+  , "XMLElementEmptyTag"
+  , "XMLElementStartTagName"
+  , "XMLElementStartTagAttributeName"
+  , "XMLElementStartTagAttributeValue"
+  , "XMLElementStartTagNamespaceName"
+  , "XMLElementStartTagNamespaceValue"
+  , "XMLElementContentCharData"
+  , "XMLElementContentComment"
+  , "XMLElementContentProcessingIntruction"
+  , "XMLElementContentCDATA"
+  , "XMLElementEndTag"
+  , "XMLElementComment"
+  , "XMLElementProcessingInstruction"
   ]
 
 --------------------------------------------------------------------------------
