@@ -42,24 +42,28 @@ data XMLDocTypeValue : Type where
   XMLDocTypeInternalSubset        : String -> XMLValue
 
 --------------------------------------------------------------------------------
---          XMLElementValue
+--          XMLElementTagValue
 --------------------------------------------------------------------------------
 
 public export
-data XMLElementValue : Type where
+data XMLElementTagValue : Type where
   XMLElementEmptyTag                    : String -> XMLValue
   XMLElementStartTagName                : String -> XMLValue
   XMLElementStartTagAttributeName       : String -> XMLValue
   XMLElementStartTagAttributeValue      : String -> XMLValue
   XMLElementStartTagNamespaceName       : String -> XMLValue
   XMLElementStartTagNamespaceValue      : String -> XMLValue
+
+--------------------------------------------------------------------------------
+--          XMLElementValue
+--------------------------------------------------------------------------------
+
+public export
+data XMLElementValue : Type where
   XMLElementContentCharData             : String -> XMLValue
   XMLElementContentComment              : String -> XMLValue
   XMLElementContentProcessingIntruction : String -> String -> XMLValue
   XMLElementContentCDATA                : String -> XMLValue
-  XMLElementEndTag                      : String -> XMLValue
-  XMLElementComment                     : String -> XMLValue
-  XMLElementProcessingInstruction       : String -> String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
@@ -70,11 +74,11 @@ record XMLDocument where
   constructor MkXMLDocument
   decl     : Maybe (List XMLDeclValue)
   doctype  : Maybe (List XMLDocTypeValue)
-  elements : List (List XMLElementValue)
+  elements : List (List XMLElementTagValue, List XMLElementValue)
 
 %runElab derive "XMLDocument" [Show,Eq]
 
-Interpolation XMLValues where interpolate = show
+Interpolation XMLDocument where interpolate = show
 
 --------------------------------------------------------------------------------
 --          Parser State
