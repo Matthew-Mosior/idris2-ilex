@@ -42,28 +42,23 @@ data XMLDocTypeValue : Type where
   XMLDocTypeInternalSubset        : String -> XMLValue
 
 --------------------------------------------------------------------------------
---          XMLElementTagValue
+--          XMLElementValue
 --------------------------------------------------------------------------------
 
 public export
-data XMLElementTagValue : Type where
+data XMLElementValue : Type where
   XMLElementEmptyTag                    : String -> XMLValue
   XMLElementStartTagName                : String -> XMLValue
   XMLElementStartTagAttributeName       : String -> XMLValue
   XMLElementStartTagAttributeValue      : String -> XMLValue
   XMLElementStartTagNamespaceName       : String -> XMLValue
   XMLElementStartTagNamespaceValue      : String -> XMLValue
+  XMLElementCharData                    : String -> XMLValue
+  XMLElementComment                     : String -> XMLValue
+  XMLElementProcessingIntruction        : String -> String -> XMLValue
+  XMLElementCDATA                       : String -> XMLValue
+  XMLElementNested                      : String -> List XMLElementValue -> XMLElementValue
 
---------------------------------------------------------------------------------
---          XMLElementValue
---------------------------------------------------------------------------------
-
-public export
-data XMLElementValue : Type where
-  XMLElementContentCharData             : String -> XMLValue
-  XMLElementContentComment              : String -> XMLValue
-  XMLElementContentProcessingIntruction : String -> String -> XMLValue
-  XMLElementContentCDATA                : String -> XMLValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
@@ -74,7 +69,7 @@ record XMLDocument where
   constructor MkXMLDocument
   decl     : Maybe (List XMLDeclValue)
   doctype  : Maybe (List XMLDocTypeValue)
-  elements : List (List XMLElementTagValue, List XMLElementValue)
+  elements : List XMLElementValue
 
 %runElab derive "XMLDocument" [Show,Eq]
 
