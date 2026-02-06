@@ -18,16 +18,23 @@ import public Text.ILex
 %language ElabReflection
 
 --------------------------------------------------------------------------------
+--          XMLMiscValue
+--------------------------------------------------------------------------------
+
+public export
+data XMLMiscValue : Type where
+  XMLMiscComment               : String -> XMLMiscValue
+  XMLMiscProcessingInstruction : String -> String -> XMLMiscValue
+
+--------------------------------------------------------------------------------
 --          XMLDeclValue
 --------------------------------------------------------------------------------
 
 public export
 data XMLDeclValue : Type where
-  XMLDeclVersion               : String -> XMLValue
-  XMLDeclEncoding              : String -> XMLValue
-  XMLDeclStandalone            : Bool -> XMLValue
-  XMLDeclComment               : String -> XMLValue
-  XMLDeclProcessingInstruction : String -> String -> XMLValue
+  XMLDeclVersion    : String -> XMDeclLValue
+  XMLDeclEncoding   : String -> XMLDeclValue
+  XMLDeclStandalone : Bool -> XMLDeclValue
 
 --------------------------------------------------------------------------------
 --          XMLDocTypeValue
@@ -35,29 +42,34 @@ data XMLDeclValue : Type where
 
 public export
 data XMLDocTypeValue : Type where
-  XMLDocTypeSystem                : String -> XMLValue
-  XMLDocTypePublic                : String -> String -> XMLValue
-  XMLDocTypeComment               : String -> XMLValue
-  XMLDocTypeProcessingInstruction : String -> String -> XMLValue
-  XMLDocTypeInternalSubset        : String -> XMLValue
+  XMLDocTypeSystem : String -> XMLDocTypeValue
+  XMLDocTypePublic : String -> String -> XMLDocTypeValue
+  XMLDocTypeName   : String -> XMLDocTypeValue
 
 --------------------------------------------------------------------------------
---          XMLElementValue
+--          XMLElementValue and XMLNodeValue
 --------------------------------------------------------------------------------
 
-public export
-data XMLElementValue : Type where
-  XMLElementEmptyTag               : String -> XMLValue
-  XMLElementStartTagName           : String -> XMLValue
-  XMLElementStartTagAttributeName  : String -> XMLValue
-  XMLElementStartTagAttributeValue : String -> XMLValue
-  XMLElementStartTagNamespaceName  : String -> XMLValue
-  XMLElementStartTagNamespaceValue : String -> XMLValue
-  XMLElementCharData               : String -> XMLValue
-  XMLElementComment                : String -> XMLValue
-  XMLElementProcessingIntruction   : String -> String -> XMLValue
-  XMLElementCDATA                  : String -> XMLValue
-  XMLElementNested                 : String -> List XMLElementValue -> XMLElementValue
+mutual
+  public export
+  data XMLElementValue : Type where
+    XMLElementEmptyTag               : String -> XMLElementValue
+    XMLElementStartTagName           : String -> XMLElementValue
+    XMLElementStartTagAttributeName  : String -> XMLElementValue
+    XMLElementStartTagAttributeValue : String -> XMLElementValue
+    XMLElementStartTagNamespaceName  : String -> XMLElementValue
+    XMLElementStartTagNamespaceValue : String -> XMLElementValue
+    XMLElementCharData               : String -> XMLElementValue
+    XMLElementMisc                   : XMLMiscValue -> XMLElementValue
+    XMLElementCDATA                  : String -> XMLElementValue
+    XMLElementNodes                  : List XMLNodeValue -> XMLElementValue
+
+  public export
+  data XMLNodeValue : Type where
+    XMLNodetCharData              : String -> XMLNodeValue
+    XMLNodeMisc                   : XMLMiscValue -> XMLNodeValue
+    XMLNodeCDATA                  : String -> XMLNodeValue
+    XMLNodeElement                : XMLElementValue -> XMLNodeValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
@@ -66,9 +78,12 @@ data XMLElementValue : Type where
 public export
 record XMLDocument where
   constructor MkXMLDocument
-  decl     : Maybe (List XMLDeclValue)
-  doctype  : Maybe (List XMLDocTypeValue)
-  elements : List XMLElementValue
+  decl            : Maybe (List XMLDeclValue)
+  postdeclmisc    : Maybe (List Misc)
+  doctype         : Maybe (List XMLDocTypeValue)
+  postdoctypemisc : Maybe (List Misc)
+  root            : XMLElementValue
+  postrootmisc    : Maybe (List Misc)
 
 %runElab derive "XMLDocument" [Show,Eq]
 
