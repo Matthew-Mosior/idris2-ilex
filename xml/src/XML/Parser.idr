@@ -4,6 +4,7 @@ import Data.Bits
 import Data.Buffer
 import Data.ByteString
 import Data.Linear.Ref1
+import Data.SortedMap
 import Derive.Prelude
 import FS.Posix
 import IO.Async.Loop.Epoll
@@ -98,11 +99,12 @@ record XMLSTCK (q : Type) where
   psns               : Ref q (SnocList Position)
   strs               : Ref q (SnocList String)
   err                : Ref q (Maybe $ BoundedErr Void)
+  elementnesting     : Ref q Nat
   xmldecl            : Ref q (SnocList XMLDeclValue)
   xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
   xmldoctype         : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
-  xmlrootelement     : Ref q (SortedMap Nat (String, SnocList XMLElementValue))
+  xmlrootelement     : Ref q (SortedMap Nat XMLElementValue)
   xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
   bytes              : Ref q ByteString
 
