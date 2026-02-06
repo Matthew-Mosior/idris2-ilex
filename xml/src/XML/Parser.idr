@@ -59,9 +59,6 @@ mutual
     XMLElementStartTagAttributeValue : String -> XMLElementValue
     XMLElementStartTagNamespaceName  : String -> XMLElementValue
     XMLElementStartTagNamespaceValue : String -> XMLElementValue
-    XMLElementCharData               : String -> XMLElementValue
-    XMLElementMisc                   : XMLMiscValue -> XMLElementValue
-    XMLElementCDATA                  : String -> XMLElementValue
     XMLElementNodes                  : List XMLNodeValue -> XMLElementValue
 
   public export
