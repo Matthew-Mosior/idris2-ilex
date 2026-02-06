@@ -47,18 +47,17 @@ data XMLDocTypeValue : Type where
 
 public export
 data XMLElementValue : Type where
-  XMLElementEmptyTag                    : String -> XMLValue
-  XMLElementStartTagName                : String -> XMLValue
-  XMLElementStartTagAttributeName       : String -> XMLValue
-  XMLElementStartTagAttributeValue      : String -> XMLValue
-  XMLElementStartTagNamespaceName       : String -> XMLValue
-  XMLElementStartTagNamespaceValue      : String -> XMLValue
-  XMLElementCharData                    : String -> XMLValue
-  XMLElementComment                     : String -> XMLValue
-  XMLElementProcessingIntruction        : String -> String -> XMLValue
-  XMLElementCDATA                       : String -> XMLValue
-  XMLElementNested                      : String -> List XMLElementValue -> XMLElementValue
-
+  XMLElementEmptyTag               : String -> XMLValue
+  XMLElementStartTagName           : String -> XMLValue
+  XMLElementStartTagAttributeName  : String -> XMLValue
+  XMLElementStartTagAttributeValue : String -> XMLValue
+  XMLElementStartTagNamespaceName  : String -> XMLValue
+  XMLElementStartTagNamespaceValue : String -> XMLValue
+  XMLElementCharData               : String -> XMLValue
+  XMLElementComment                : String -> XMLValue
+  XMLElementProcessingIntruction   : String -> String -> XMLValue
+  XMLElementCDATA                  : String -> XMLValue
+  XMLElementNested                 : String -> List XMLElementValue -> XMLElementValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
@@ -76,7 +75,7 @@ record XMLDocument where
 Interpolation XMLDocument where interpolate = show
 
 --------------------------------------------------------------------------------
---          Parser State
+--          XMLSTCK
 --------------------------------------------------------------------------------
 
 public export
