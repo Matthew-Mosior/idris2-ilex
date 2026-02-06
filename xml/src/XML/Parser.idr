@@ -93,15 +93,18 @@ Interpolation XMLDocument where interpolate = show
 public export
 record XMLSTCK (q : Type) where
   constructor XML
-  line        : Ref q Nat
-  col         : Ref q Nat
-  psns        : Ref q (SnocList Position)
-  strs        : Ref q (SnocList String)
-  err         : Ref q (Maybe $ BoundedErr Void)
-  xmldecl     : Ref q (SnocList XMLDeclValue)
-  xmldoctype  : Ref q (SnocList XMLDocTypeValue)
-  xmlelements : Ref q (SnocList XMLElementValue)
-  bytes       : Ref q ByteString
+  line               : Ref q Nat
+  col                : Ref q Nat
+  psns               : Ref q (SnocList Position)
+  strs               : Ref q (SnocList String)
+  err                : Ref q (Maybe $ BoundedErr Void)
+  xmldecl            : Ref q (SnocList XMLDeclValue)
+  xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
+  xmldoctype         : Ref q (SnocList XMLDocTypeValue)
+  xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
+  xmlrootelement     : Ref q (SnocList XMLElementValue)
+  xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
+  bytes              : Ref q ByteString
 
 export %inline
 HasPosition XMLSTCK where
