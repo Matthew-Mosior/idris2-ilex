@@ -102,7 +102,7 @@ record XMLSTCK (q : Type) where
   xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
   xmldoctype         : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
-  xmlrootelement     : Ref q (SnocList XMLElementValue)
+  xmlrootelement     : Ref q (SortedMap Nat (String, SnocList XMLElementValue))
   xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
   bytes              : Ref q ByteString
 
