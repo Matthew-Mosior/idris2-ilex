@@ -48,7 +48,7 @@ data XMLDocTypeValue : Type where
   XMLDocTypeName   : String -> XMLDocTypeValue
 
 --------------------------------------------------------------------------------
---          XMLElementValue and XMLNodeValue
+--          XMLElementValue
 --------------------------------------------------------------------------------
 
 mutual
@@ -60,14 +60,9 @@ mutual
     XMLElementStartTagAttributeValue : String -> XMLElementValue
     XMLElementStartTagNamespaceName  : String -> XMLElementValue
     XMLElementStartTagNamespaceValue : String -> XMLElementValue
-    XMLElementNodes                  : List XMLNodeValue -> XMLElementValue
-
-  public export
-  data XMLNodeValue : Type where
-    XMLNodetCharData              : String -> XMLNodeValue
-    XMLNodeMisc                   : XMLMiscValue -> XMLNodeValue
-    XMLNodeCDATA                  : String -> XMLNodeValue
-    XMLNodeElement                : XMLElementValue -> XMLNodeValue
+    XMLElementCharData               : String -> XMLElementValue
+    XMLElementMisc                   : XMLMiscValue -> XMLElementValue
+    XMLElementCDATA                  : String -> XMLElementValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
@@ -80,7 +75,7 @@ record XMLDocument where
   postdeclmisc    : Maybe (List Misc)
   doctype         : Maybe (List XMLDocTypeValue)
   postdoctypemisc : Maybe (List Misc)
-  root            : XMLElementValue
+  root            : List XMLElementValue
   postrootmisc    : Maybe (List Misc)
 
 %runElab derive "XMLDocument" [Show,Eq]
@@ -99,12 +94,12 @@ record XMLSTCK (q : Type) where
   psns               : Ref q (SnocList Position)
   strs               : Ref q (SnocList String)
   err                : Ref q (Maybe $ BoundedErr Void)
-  elementnesting     : Ref q Nat
+  elementcounter     : Ref q Nat
   xmldecl            : Ref q (SnocList XMLDeclValue)
   xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
   xmldoctype         : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
-  xmlrootelement     : Ref q (SortedMap Nat XMLElementValue)
+  xmlrootelement     : Ref q (SortedMap Nat (SnocList XMLElementValue))
   xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
   bytes              : Ref q ByteString
 
