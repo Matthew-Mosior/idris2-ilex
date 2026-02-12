@@ -129,11 +129,15 @@ xmlinit = T1.do
   bs <- ref1 [<]
   ss <- ref1 [<]
   er <- ref1 Nothing
+  ec <- ref1 Z
   xmldl <- ref1 [<]
+  xmlpdl <- ref1 [<]
   xmldt <- ref1 [<]
-  xmlelmts <- ref1 [<]
+  xmlpdt <- ref1 [<]
+  xmlre <- ref1 [<]
+  xmlpre <- ref1 [<]
   by <- ref1 ""
-  pure (XML l c bs ss er xmldl xmldt xmlelmts by)
+  pure (XML l c bs ss er ec xmldl xmlpdl xmldt xmlpdt xmlre xmlpre by)
 
 --------------------------------------------------------------------------------
 --          Parser State
