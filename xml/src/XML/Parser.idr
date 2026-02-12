@@ -51,18 +51,18 @@ data XMLDocTypeValue : Type where
 --          XMLElementValue
 --------------------------------------------------------------------------------
 
-mutual
-  public export
-  data XMLElementValue : Type where
-    XMLElementEmptyTag               : String -> XMLElementValue
-    XMLElementStartTagName           : String -> XMLElementValue
-    XMLElementStartTagAttributeName  : String -> XMLElementValue
-    XMLElementStartTagAttributeValue : String -> XMLElementValue
-    XMLElementStartTagNamespaceName  : String -> XMLElementValue
-    XMLElementStartTagNamespaceValue : String -> XMLElementValue
-    XMLElementCharData               : String -> XMLElementValue
-    XMLElementMisc                   : XMLMiscValue -> XMLElementValue
-    XMLElementCDATA                  : String -> XMLElementValue
+public export
+data XMLElementValue : Type where
+  XMLElementEmptyTag               : String -> XMLElementValue
+  XMLElementStartTagName           : String -> XMLElementValue
+  XMLElementStartTagAttributeName  : String -> XMLElementValue
+  XMLElementStartTagAttributeValue : String -> XMLElementValue
+  XMLElementStartTagNamespaceName  : String -> XMLElementValue
+  XMLElementStartTagNamespaceValue : String -> XMLElementValue
+  XMLElementCharData               : String -> XMLElementValue
+  XMLElementMisc                   : XMLMiscValue -> XMLElementValue
+  XMLElementCDATA                  : String -> XMLElementValue
+  XMLElementNode                   : List XMLElementValue -> XMLElementValue
 
 --------------------------------------------------------------------------------
 --          XMLDocument
