@@ -118,6 +118,10 @@ HasStringLits XMLSTCK where
   strings = strs
 
 export %inline
+HasStack XMLSTCK (SnocList (String, XMLElementValue)) where
+  stack = xmlelementstack
+
+export %inline
 HasBytes XMLSTCK where
   bytes = XMLSTCK.bytes
 
