@@ -99,8 +99,8 @@ record XMLSTCK (q : Type) where
   xmldoctype         : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
   xmlrootelement     : Ref q (SnocList XMLElementValue)
-  xmlelementstack    : Ref q (SnocList (String, XMLElementValue))
   xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
+  xmlelementstack    : Ref q (SnocList (String, SnocList XMLElementValue))
   bytes              : Ref q ByteString
 
 export %inline
@@ -118,10 +118,6 @@ HasStringLits XMLSTCK where
   strings = strs
 
 export %inline
-HasStack XMLSTCK (SnocList (String, XMLElementValue)) where
-  stack = xmlelementstack
-
-export %inline
 HasBytes XMLSTCK where
   bytes = XMLSTCK.bytes
 
@@ -133,15 +129,15 @@ xmlinit = T1.do
   bs <- ref1 [<]
   ss <- ref1 [<]
   er <- ref1 Nothing
-  ec <- ref1 Z
   xmldl <- ref1 [<]
   xmlpdl <- ref1 [<]
   xmldt <- ref1 [<]
   xmlpdt <- ref1 [<]
   xmlre <- ref1 [<]
   xmlpre <- ref1 [<]
+  es <- ref1 [<]
   by <- ref1 ""
-  pure (XML l c bs ss er xmldl xmlpdl xmldt xmlpdt xmlre xmlpre by)
+  pure (XML l c bs ss er xmldl xmlpdl xmldt xmlpdt xmlre xmlpre es by)
 
 --------------------------------------------------------------------------------
 --          Parser State
