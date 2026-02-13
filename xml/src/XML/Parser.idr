@@ -5,6 +5,7 @@ import Data.Buffer
 import Data.ByteString
 import Data.Linear.Ref1
 import Data.SortedMap
+import Data.String
 import Derive.Prelude
 import FS.Posix
 import IO.Async.Loop.Epoll
@@ -17,6 +18,16 @@ import public Text.ILex
 
 %default total
 %language ElabReflection
+
+--------------------------------------------------------------------------------
+--          RExp
+--------------------------------------------------------------------------------
+
+whitespace : RExp True
+whitespace = ' '
+
+linebreak : RExp True
+linebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 --------------------------------------------------------------------------------
 --          XMLMiscValue
@@ -36,6 +47,8 @@ data XMLDeclValue : Type where
   XMLDeclVersion    : String -> XMDeclLValue
   XMLDeclEncoding   : String -> XMLDeclValue
   XMLDeclStandalone : Bool -> XMLDeclValue
+  XMLDeclNL         : ByteString -> XMLDeclValue
+  XMLDeclWhitespace : ByteString -> XMLDeclValue
 
 --------------------------------------------------------------------------------
 --          XMLDocTypeValue
@@ -43,9 +56,11 @@ data XMLDeclValue : Type where
 
 public export
 data XMLDocTypeValue : Type where
-  XMLDocTypeSystem : String -> XMLDocTypeValue
-  XMLDocTypePublic : String -> String -> XMLDocTypeValue
-  XMLDocTypeName   : String -> XMLDocTypeValue
+  XMLDocTypeSystem     : String -> XMLDocTypeValue
+  XMLDocTypePublic     : String -> String -> XMLDocTypeValue
+  XMLDocTypeName       : String -> XMLDocTypeValue
+  XMLDocTypeNL         : ByteString -> XMLDocTypeValue
+  XMLDocTypeWhitespace : ByteString -> XMLDocTypeValue
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
@@ -62,6 +77,7 @@ data XMLElementValue : Type where
   XMLElementCharData               : String -> XMLElementValue
   XMLElementMisc                   : XMLMiscValue -> XMLElementValue
   XMLElementCDATA                  : String -> XMLElementValue
+  XMLElementNL                     : ByteString -> XMLElementValue
   XMLElementNode                   : List XMLElementValue -> XMLElementValue
 
 --------------------------------------------------------------------------------
@@ -151,22 +167,26 @@ xmlinit = T1.do
   , "XMLDeclVersionStrStart"
   , "XMLDeclVersionStr"
   , "XMLDeclVersionE"
+  , "XMLDeclVersionPostUnfinished"
   , "XMLDeclEncodingS"
   , "XMLDeclEncodingStrStart"
   , "XMLDeclEncodingStr"
   , "XMLDeclEncodingE"
+  , "XMLDeclEncodingPostUnfinished"
   , "XMLDeclStandaloneS"
   , "XMLDeclStandaloneStrStart"
   , "XMLDeclStandaloneStr"
   , "XMLDeclStandaloneE"
-  , "XMLDeclMiscCommentS"
   , "XMLDeclMiscCommentStrStart"
   , "XMLDeclMiscCommentStr"
   , "XMLDeclMiscCommentE"
-  , "XMLDeclMiscProcessingInstructionS"
   , "XMLDeclMiscProcessingInstructionStrStart"
   , "XMLDeclMiscProcessingInstructionStr"
   , "XMLDeclMiscProcessingInstructionE"
+  , "XMLDeclNLE"
+  , "XMLDeclWhitespaceE"
+  , "XMLDeclUnfinished"
+  , "XMLDeclFinished"
   , "XMLDocTypeSystemS"
   , "XMLDocTypeSystemStrStart"
   , "XMLDocTypeSystemStr"
@@ -179,11 +199,14 @@ xmlinit = T1.do
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
   , "XMLDocTypeNameE"
+  , "XMLDocTypeNLE"
+  , "XMLDocTypeWhitespaceE"
+  , "XMLDocTypeUnfinished"
+  , "XMLDoctypeFinished"
   , "XMLElementEmptyTagS"
   , "XMLElementEmptyTagStrStart"
   , "XMLElementEmptyTagStr"
   , "XMLElementEmptyTagE"
-  , "XMLElementStartTagNameS"
   , "XMLElementStartTagNameStrStart"
   , "XMLElementStartTagNameStr"
   , "XMLElementStartTagNameE"
@@ -226,6 +249,8 @@ xmlinit = T1.do
   , "XMLElementEndTagStrStart"
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
+  , "XMLElementFinished"
+  , "XMLFinished"
   ]
 
 --------------------------------------------------------------------------------
@@ -243,55 +268,37 @@ xmlErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onFASTAValueHdrS : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueHdrS v = push1 x.fastavalues v >> pure FHdrToNLS
+onXMLDeclNL : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclNLE
 
-onFASTAValueHdrR : (x : FSTCK q) => FASTAValue -> F1 q FST
-onFASTAValueHdrR v = push1 x.fastavalues v >> pure FHdrToNLR
+onXMLDeclWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclWhitespace v = incline 1 >> push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclWhitespaceE
 
-onFASTAValueAdenine : (x : FSTCK q) => F1 q FST
-onFASTAValueAdenine = T1.do
-  fc <- read1 x.fastacounter
-  push1 x.fastavalues (Adenine fc) >> write1 x.fastacounter (S fc) >> pure FD
+onXMLDeclVersionStrEnd : (x : XMLSTCK) => XMLDeclVersion -> F1 q XMLST
+onXMLDeclVersionStrEnd v = push1 x.xmldecl v >> pure XMLDeclVersionE
 
-onFASTAValueThymine : (x : FSTCK q) => F1 q FST
-onFASTAValueThymine = T1.do
-  fc <- read1 x.fastacounter
-  push1 x.fastavalues (Thymine fc) >> write1 x.fastacounter (S fc) >> pure FD
+onXMLDeclEncodingStrEnd : (x : XMLSTCK) => XMLDeclEncoding -> F1 q XMLST
+onXMLDeclEncodingStrEnd v = push1 x.xmldecl v >> pure XMLDeclEncodingE
 
-onFASTAValueGuanine : (x : FSTCK q) => F1 q FST
-onFASTAValueGuanine = T1.do
-  fc <- read1 x.fastacounter
-  push1 x.fastavalues (Guanine fc) >> write1 x.fastacounter (S fc) >> pure FD
+onXMLDeclStandaloneStrEnd : (x : XMLSTCK) => XMLDeclStandalone -> F1 q XMLST
+onXMLDeclStandaloneStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
 
-onFASTAValueCytosine : (x : FSTCK q) => F1 q FST
-onFASTAValueCytosine = T1.do
-  fc <- read1 x.fastacounter
-  push1 x.fastavalues (Cytosine fc) >> write1 x.fastacounter (S fc) >> pure FD
+onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLDeclMiscComment -> F1 q XMLST
+onXMLDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
 
-onNLFHdr : (x : FSTCK q) => ByteString -> F1 q FST
-onNLFHdr v = T1.do
-  incline 1
-  push1 x.fastavalues (NL v)
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
-  case Prelude.any isHeader fvs && Prelude.any isData fvs of
-    True  => pure FBroken
-    False => T1.do
-      ln <- read1 x.line
-      push1 x.fastalines (MkFASTALine ln fvs)
-      pure FHdrDone
+onXMLDeclMiscProcessingInstructionStrEnd : (x : XMLSTCK) => XMLDeclMiscProcessingInstruction -> F1 q XMLST
+onXMLDeclMiscProcessingInstructionStrEnd v = T1.do
+  s <- getStr
+  let (pitarget, pidata) = break (\x -> x == ' ' || x == '\n' || x == '\r' || x == '\RS') s
+      pi = XMLDeclMiscProcessingInstruction pitarget pidata
+  push1 x.xmlpostdeclmisc v
+  pure XMLDeclMiscProcessingInstructionE
 
-onNLFD : (x : FSTCK q) => ByteString -> F1 q FST
-onNLFD v = T1.do
-  incline 1
-  push1 x.fastavalues (NL v)
-  fvs@(_::_) <- getList x.fastavalues | [] => pure FEmpty
-  case Prelude.any isHeader fvs && Prelude.any isData fvs of
-    True  => pure FBroken
-    False => T1.do
-      ln <- read1 x.line
-      push1 x.fastalines (MkFASTALine ln fvs)
-      pure FDNL
+onXMLDocTypeNL : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDoctypeNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeNLE
+
+onXMLDocTypeWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDoctypeWhitespace v = incline 1 >> push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeWhitespaceE
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
@@ -305,10 +312,10 @@ onEOI = T1.do
 xmlInit : DFA q XMLSz XMLSTCK
 xmlInit =
   dfa
-    [ read (str "<?xml version=") (pure onXMLDeclVersionS)
-    , copen (str "<!--") (pure onXMLPrologMiscCommentStr)
-    , copen (str "<?") (pure onXMLPrologMiscProcessingInstructionStr)
-    , copen '<' (pure onXMLElementStartTagStr)
+    [ read (str "<?xml version=") (pure XMLDeclVersionS)
+    , copen (str "<!--") (pure XMLDeclMiscCommentS)
+    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionS)
+    , copen '<' (pure XMLElementStartTagNameS)
     ]
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
@@ -324,17 +331,19 @@ xmlDeclVersionStr =
     , read (plus $ dot && not '"') (pushStr XMLDeclVersionStr)
     ]
 
-xmlDeclVersionEnd : DFA q XMLSz XMLSTCK
-xmlDeclVersionEnd =
+xmlDeclVersionAfter : DFA q XMLSz XMLSTCK
+xmlDeclVersionAfter =
   dfa
-    [ read (plus ' ') (pure onXMLDeclEncodingStandaloneS)
+    [ conv linebreak (\bs => onXMLDeclNL bs)
+    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    , read (str "?>") (pure XMLDeclFinished)
     ]
 
-xmlDeclEncodingStandalone : DFA q XMLSz XMLSTCK
-xmlDeclEncodingStandalone =
+xmlDeclVersionPostUnfinished : DFA q XMLSz XMLSTCK
+xmlDeclVersionPostUnfinished =
   dfa
-    [ read (str "encoding=") (pure onXMLDeclEncodingS)
-    , read (str "standalone=") (pure onXMLDeclStandaloneS)
+    [ read (str "encoding=") (pure XMLDeclEncodingS)
+    , read (str "standalone=") (pure XMLDeclStandaloneS)
     ]
 
 xmlDeclEncodingS : DFA q XMLSz XMLSTCK
@@ -346,43 +355,82 @@ xmlDeclEncodingS =
 xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
 xmlDeclEncodingStr =
   dfa
-    [ cclose '"' $ getStr >>= onXMLDeclEncodingStr . XMLDeclEncoding
+    [ cclose '"' $ getStr >>= onXMLDeclEncodingStrEnd . XMLDeclEncoding
     , read (plus $ dot && not '"') (pushStr XMLDeclEncodingStr)
-    , conv linebreak (const $ pure NL)
+    ]
+
+xmlDeclEncodingAfter : DFA q XMLSz XMLSTCK
+xmlDeclEncodingAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclNL bs)
+    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    , read (str "?>") (pure XMLDeclFinished)
+    ]
+
+xmlDeclEncodingPostUnfinished : DFA q XMLSz XMLSTCK
+xmlDeclEncodingPostUnfinished =
+  dfa
+    [ read (str "standalone=") (pure XMLDeclStandaloneS)
     ]
 
 xmlDeclStandaloneS : DFA q XMLSz XMLSTCK
 xmlDeclStandaloneS =
   dfa
-    [ copen '"' (pure XMLDeclEncodingStrStart)
+    [ copen '"' (pure XMLDeclStandaloneStrStart)
     ]
 
 xmlDeclStandaloneStr : DFA q XMLSz XMLSTCK
 xmlDeclStandaloneStr =
   dfa
-    [ cclose '"' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
+    [ cclose '"' $ getStr >>= onXMLDeclStandaloneStrEnd . XMLDeclStandalone
     , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
-    , conv linebreak (const $ pure NL)
     ]
 
-xmlDeclEnd : DFA q XMLSz XMLSTCK
-xmlDeclEnd =
+xmlDeclStandaloneAfter : DFA q XMLSz XMLSTCK
+xmlDeclStandaloneAfter =
   dfa
-    [ read (str "?>") (pure XMLDeclComplete)
+    [ read (str "?>") (pure XMLDeclFinished)
     ]
 
-xmlPrologMiscCommentStr : DFA q XMLSz XMLSTCK
-xmlPrologMiscCommentStr =
+xmlPostDecl : DFA q XMLSz XMLSTCK
+xmlPostDecl =
   dfa
-    [ cclose '-->' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
+    [ copen (str "<!--") (pure XMLDeclMiscCommentStrStart)
+    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionStrStart)
+    , copen '<' (pure XMLElementStartTagNameStrStart)
+    ]
+
+xmlDeclMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlDeclMiscCommentStr =
+  dfa
+    [ cclose "-->" $ getStr >>= onXMLDeclMiscCommentStrEnd . XMLMiscComment
     , read (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
     ]
 
-xmlPrologMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
-xmlPrologMiscProcessingInstructionStr =
+xmlDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
+xmlDeclMiscCommentAfter =
   dfa
-    [ cclose '?>' $ getStr >>= onXMLDeclStandaloneStr . XMLDeclStandalone
-    , read (plus $ dot && not "?>") (pushStr XMLDeclStandaloneStr)
+    [ conv linebreak (\bs => onXMLDeclNL bs)
+    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    , copen (str "<!-") (pure XMLDeclMiscCommentS)
+    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionS)
+    ]
+
+xmlDeclMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
+xmlDeclMiscProcessingInstructionStr =
+  dfa
+    [ cclose "?>" (\_ => onXMLDeclMiscProcessingInstructionStrEnd)
+    , read (plus $ dot && not "?>") (pushStr XMLDeclMiscProcessingInstructionStr)
+    ]
+
+xmlDeclMiscProcessingInstructionAfter : DFA q XMLSz XMLSTCK
+xmlDeclMiscProcessingInstructionAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclNL bs)
+    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    , copen (str "<!--") (pure XMLDeclMiscCommentStrStart)
+    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionStrStart)
+    , copen '<' (pure XMLElementStartTagNameStrStart)
     ]
 
 xmlElementStartTagStr : DFA q XMLSz XMLSTCK
@@ -396,17 +444,25 @@ xmlSteps : Lex1 q XMLSz XMLSTCK
 xmlSteps =
   lex1
     [ E XMLIni xmlInit
-    , E FHdrToNLS fastaHdrStrStart
-    , E FHdrToNLR fastaHdrStrRest
-    , E FHdrDone fastaFDInit
-    , E FDNL fastaFDInit
-    , E FD fastaFD
+    , E XMLDeclVersionS xmlDeclVersionS
+    , E XMLDeclVersionStrStart xmlDecVersionStr
+    , E XMLDeclVersionE xmlDeclVersionAfter
+    , E XMLDeclVersionPostUnfinished xmlDeclVersionPostUnfinished
+    , E XMLDeclEncodingS xmlDeclEncodingS
+    , E XMLDeclEncodingStrStart xmlDeclEncodingStr
+    , E XMLDeclEncodingE xmlDeclEncodingAfter
+    , E XMLDeclEncodingPostUnfinished xmlDeclEncodingPostUnfinished
+    , E XMLDeclStandaloneS xmlDeclStandaloneS
+    , E XMLDeclStandaloneStrStart xmlDeclStandaloneStr
+    , E XMLDeclStandaloneE xmlDeclStandaloneAfter
+    , E XMLDeclUnfinished xmlDeclVersionPostUnfinished
+    , E XMLDeclFinished xmlPostDecl
     ]
 
 xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
 xmlEOI st x =
-  case st == FIni || st == FHdr || st == FEmpty || st == FBroken of
-    True  => arrFail XMLSTCK fastaErr st x
+  case st == XMLIni || st == XMLEmpty of
+    True  => arrFail XMLSTCK xmlErr st x
     False => T1.do
       _ <- onEOI
       xml <- getList x.xmldoc
