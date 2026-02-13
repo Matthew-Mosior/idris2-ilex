@@ -150,62 +150,82 @@ xmlinit = T1.do
   , "XMLDeclVersionS"
   , "XMLDeclVersionStrStart"
   , "XMLDeclVersionStr"
+  , "XMLDeclVersionE"
   , "XMLDeclEncodingS"
   , "XMLDeclEncodingStrStart"
   , "XMLDeclEncodingStr"
+  , "XMLDeclEncodingE"
   , "XMLDeclStandaloneS"
   , "XMLDeclStandaloneStrStart"
   , "XMLDeclStandaloneStr"
+  , "XMLDeclStandaloneE"
   , "XMLDeclMiscCommentS"
   , "XMLDeclMiscCommentStrStart"
   , "XMLDeclMiscCommentStr"
+  , "XMLDeclMiscCommentE"
   , "XMLDeclMiscProcessingInstructionS"
   , "XMLDeclMiscProcessingInstructionStrStart"
   , "XMLDeclMiscProcessingInstructionStr"
+  , "XMLDeclMiscProcessingInstructionE"
   , "XMLDocTypeSystemS"
   , "XMLDocTypeSystemStrStart"
   , "XMLDocTypeSystemStr"
+  , "XMLDocTypeSystemE"
   , "XMLDocTypePublicS"
   , "XMLDocTypePublicStrStart"
   , "XMLDocTypePublicStr"
+  , "XMLDocTypePublicE"
   , "XMLDocTypeNameS"
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
+  , "XMLDocTypeNameE"
   , "XMLElementEmptyTagS"
   , "XMLElementEmptyTagStrStart"
   , "XMLElementEmptyTagStr"
+  , "XMLElementEmptyTagE"
   , "XMLElementStartTagNameS"
   , "XMLElementStartTagNameStrStart"
   , "XMLElementStartTagNameStr"
+  , "XMLElementStartTagNameE"
   , "XMLElementStartTagAttributeNameS"
   , "XMLElementStartTagAttributeNameStrStart"
   , "XMLElementStartTagAttributeNameStr"
+  , "XMLElementStartTagAttributeNameE"
   , "XMLElementStartTagAttributeValueS"
   , "XMLElementStartTagAttributeValueStrStart"
   , "XMLElementStartTagAttributeValueStr"
+  , "XMLElementStartTagAttributeValueE"
   , "XMLElementStartTagNamespaceNameS"
   , "XMLElementStartTagNamespaceNameStrStart"
   , "XMLElementStartTagNamespaceNameStr"
+  , "XMLElementStartTagNamespaceNameE"
   , "XMLElementStartTagNamespaceValueS"
   , "XMLElementStartTagNamespaceValueStrStart"
   , "XMLElementStartTagNamespaceValueStr"
+  , "XMLElementStartTagNamespaceValueE"
   , "XMLElementCharDataS"
   , "XMLElementCharDataStrStart"
   , "XMLElementCharDataStr"
+  , "XMLElementCharDataE"
   , "XMLElementMiscCommentS"
   , "XMLElementMiscCommentStrStart"
   , "XMLElementMiscCommentStr"
+  , "XMLElementMiscCommentE"
   , "XMLElementMiscProcessingInstructionS"
   , "XMLElementMiscProcessingInstructionTargetStrStart"
   , "XMLElementMiscProcessingInstructionTargetStr"
+  , "XMLElementMiscProcessingInstructionTargetE"
   , "XMLElementMiscProcessingInstructionDataStrStart"
   , "XMLElementMiscProcessingInstructionDataStr"
+  , "XMLElementMiscProcessingInstructionDataE"
   , "XMLElementCDATAS"
   , "XMLElementCDATAStrStart"
   , "XMLElementCDATAStr"
+  , "XMLElementCDATAE"
   , "XMLElementEndTagS"
   , "XMLElementEndTagStrStart"
   , "XMLElementEndTagStr"
+  , "XMLElementEndTagE"
   ]
 
 --------------------------------------------------------------------------------
@@ -217,7 +237,6 @@ xmlErr =
   arr32 XMLSz (unexpected [])
     [ E XMLBroken $ unexpected ["character other than '>'"]
     , E XMLEmpty $ unexpected ["sequence data"]
-    , E XMLHdr $ unexpected ["sequence line"]
     ]
 
 --------------------------------------------------------------------------------
@@ -303,7 +322,6 @@ xmlDeclVersionStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
     , read (plus $ dot && not '"') (pushStr XMLDeclVersionStr)
-    , conv linebreak (const $ pure NL)
     ]
 
 xmlDeclVersionEnd : DFA q XMLSz XMLSTCK
