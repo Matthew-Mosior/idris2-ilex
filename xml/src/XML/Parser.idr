@@ -94,12 +94,12 @@ record XMLSTCK (q : Type) where
   psns               : Ref q (SnocList Position)
   strs               : Ref q (SnocList String)
   err                : Ref q (Maybe $ BoundedErr Void)
-  elementcounter     : Ref q Nat
   xmldecl            : Ref q (SnocList XMLDeclValue)
   xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
   xmldoctype         : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
-  xmlrootelement     : Ref q (SortedMap Nat (SnocList XMLElementValue))
+  xmlrootelement     : Ref q (SnocList XMLElementValue)
+  xmlelementstack    : Ref q (SnocList (String, XMLElementValue))
   xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
   bytes              : Ref q ByteString
 
@@ -137,7 +137,7 @@ xmlinit = T1.do
   xmlre <- ref1 [<]
   xmlpre <- ref1 [<]
   by <- ref1 ""
-  pure (XML l c bs ss er ec xmldl xmlpdl xmldt xmlpdt xmlre xmlpre by)
+  pure (XML l c bs ss er xmldl xmlpdl xmldt xmlpdt xmlre xmlpre by)
 
 --------------------------------------------------------------------------------
 --          Parser State
