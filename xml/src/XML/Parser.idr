@@ -189,15 +189,15 @@ xmlinit = T1.do
   , "XMLDeclFinished"
   , "XMLPostDeclNLE"
   , "XMLPostDeclWhitespaceE"
-  , "XMLMiscCommentStrStart"
-  , "XMLMiscCommentStr"
-  , "XMLMiscCommentE"
-  , "XMLMiscProcessingInstructionTargetStrStart"
-  , "XMLMiscProcessingInstructionTargetStr"
-  , "XMLMiscProcessingInstructionTargetE"
-  , "XMLMiscProcessingInstructionDataStrStart"
-  , "XMLMiscProcessingInstructionDataStr"
-  , "XMLMiscProcessingInstructionDataE"
+  , "XMLPostMiscCommentStrStart"
+  , "XMLPostMiscCommentStr"
+  , "XMLPostMiscCommentE"
+  , "XMLPostMiscProcessingInstructionTargetStrStart"
+  , "XMLPostMiscProcessingInstructionTargetStr"
+  , "XMLPostMiscProcessingInstructionTargetE"
+  , "XMLPostMiscProcessingInstructionDataStrStart"
+  , "XMLPostMiscProcessingInstructionDataStr"
+  , "XMLPostMiscProcessingInstructionDataE"
   , "XMLPostDeclMiscFinished"
   , "XMLDocTypeNameS"
   , "XMLDocTypeNameStrStart"
@@ -272,6 +272,16 @@ xmlinit = T1.do
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
   , "XMLElementFinished"
+  , "XMLPostElementMiscCommentStrStart"
+  , "XMLPostElementMiscCommentStr"
+  , "XMLPostElementMiscCommentE"
+  , "XMLPostElementMiscProcessingInstructionTargetStrStart"
+  , "XMLPostElementMiscProcessingInstructionTargetStr"
+  , "XMLPostElementMiscProcessingInstructionTargetE"
+  , "XMLPostElementMiscProcessingInstructionDataStrStart"
+  , "XMLPostElementMiscProcessingInstructionDataStr"
+  , "XMLPostElementMiscProcessingInstructionDataE"
+  , "XMLPostDeclMiscFinished"
   , "XMLFinished"
   ]
 
@@ -320,13 +330,11 @@ onXMLDeclStandaloneStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
 onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
 
-onXMLDeclMiscProcessingInstructionStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
-onXMLDeclMiscProcessingInstructionStrEnd v = T1.do
-  s <- getStr
-  let (pitarget, pidata) = break (\x -> x == ' ' || x == '\n' || x == '\r' || x == '\RS') s
-      pi = XMLMiscProcessingInstruction pitarget pidata
-  push1 x.xmlpostdeclmisc v
-  pure XMLMiscProcessingInstructionE
+onXMLPostDeclMiscProcessingInstructionTargetStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLMiscProcessingInstructionTargetE
+
+onXMLPostDeclMiscProcessingInstructionDataStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLMiscProcessingInstructionDataE
 
 onXMLPostDeclNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclNLE
@@ -420,11 +428,24 @@ xmlPostDeclMiscCommentStr =
     , conv (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
     ]
 
-xmlDeclMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
-xmlDeclMiscProcessingInstructionStr =
+xmlPostDeclMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionTargetStr =
   dfa
-    [ cclose "?>" (\_ => onXMLDeclMiscProcessingInstructionStrEnd)
-    , read (plus $ dot && not "?>") (pushStr XMLDeclMiscProcessingInstructionStr)
+    [ conv (plus $ dot && not linebreak && not whitespace) (onXMLPostDeclProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
+    ]
+
+xmlPostDeclMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionDataStr =
+  dfa
+    [ conv (plus $ dot && not linebreak && not whitespace && not "?>") (onXMLPostDeclProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
+    ]
+
+xmlPostDeclMiscProcessingInstructionDataAfter : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionDataAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    , conv "?>" (\_ => onXMLDeclMiscProcessingInstructionDataStrEnd)
     ]
 
 xmlPostDeclNLAfter : DFA q XMLSz XMLSTCK
@@ -519,10 +540,10 @@ xmlInit : DFA q XMLSz XMLSTCK
 xmlInit =
   dfa
     [ read (str "<?xml version=") (pure XMLDeclVersionS)
-    , copen (str "<!--") (pure XMLDeclMiscCommentS)
-    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionS)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
-    , copen '<' (pure XMLElementStartTagNameS)
+    , conv (str "<!--") (pure XMLPostDeclMiscCommentS)
+    , conv (str "<?") (pure XMLPostDeclMiscProcessingInstructionTargetStrStart)
+    , conv (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , conv '<' (pure XMLElementStartTagNameS)
     ]
 
 xmlDeclVersionAfter : DFA q XMLSz XMLSTCK
@@ -558,7 +579,7 @@ xmlPostDeclStart =
     [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
     , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
     , read (str "<!--") (pure XMLMiscCommentStrStart)
-    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameS)
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
@@ -566,10 +587,10 @@ xmlPostDeclStart =
 xmlPostDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscCommentAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDeclNL bs)
-    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    [ conv linebreak (\bs => onXMLPostDeclNL bs)
+    , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
     , read (str "<!--") (pure XMLMiscCommentStr)
-    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
@@ -577,10 +598,10 @@ xmlPostDeclMiscCommentAfter =
 xmlPostDeclMiscProcessingInstructionAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDeclNL bs)
-    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    [ conv linebreak (\bs => onXMLPostDeclNL bs)
+    , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
     , read (str "<!--") (pure XMLMiscCommentStrStart)
-    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
