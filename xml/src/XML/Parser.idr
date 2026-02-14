@@ -366,17 +366,17 @@ onXMLPostDeclMiscCommentNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v
 onXMLPostDeclMiscCommentWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclMiscCommentWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscCommentWhitespaceE
 
-onXMLPostDeclMiscProcessingInstructionNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscProcessingInstructionNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscProcessingInstructionNLE
-
-onXMLPostDeclMiscProcessingInstructionWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscProcessingInstructionWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscProcessingInstructionWhitespaceE
-
 onXMLPostDeclMiscAfterProcessingInstructionTargetNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclMiscAfterProcessingInstructionTargetNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscAfterProcessingInstructionTargetNLE
 
 onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
+
+onXMLPostDeclMiscAfterProcessingInstructionDataNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclMiscAfterProcessingInstructionDataNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscAfterProcessingInstructionDataNLE
+
+onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
 
 onXMLDocTypeBeforeNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeBeforeNameNLE
@@ -731,10 +731,10 @@ xmlSteps =
     , E XMLMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
     , E XMLPostDeclMiscCommentNLE xmlPostDeclStart
     , E XMLPostDeclMiscCommentWhiteSpaceE xmlPostDeclStart
-    , E XMLPostDeclMiscProcessingInstructionNLE xmlPostDeclStart
-    , E XMLPostDeclMiscProcessingInstructionWhitespaceE xmlPostDeclStart
-    , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE
+    , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE xml
     , E XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
+    , E XMLPostDeclMiscAfterProcessingInstructionDataNLE xml
+    , E XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
     , E XMLMiscProcessingInstructionTargetStrStart xmlPostDeclMiscProcessingInstructionTargetStr
     ]
 
