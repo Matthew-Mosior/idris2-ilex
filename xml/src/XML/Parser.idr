@@ -184,15 +184,15 @@ xmlinit = T1.do
   , "XMLDeclStandaloneE"
   , "XMLDeclStandaloneNLE"
   , "XMLDeclStandaloneWhitespaceE"
-  , "XMLDeclMiscCommentStrStart"
-  , "XMLDeclMiscCommentStr"
-  , "XMLDeclMiscCommentE"
-  , "XMLDeclMiscProcessingInstructionStrStart"
-  , "XMLDeclMiscProcessingInstructionStr"
-  , "XMLDeclMiscProcessingInstructionE"
+  , "XMLDeclFinished"
   , "XMLPostDeclNLE"
   , "XMLPostDeclWhitespaceE"
-  , "XMLDeclFinished"
+  , "XMLMiscCommentStrStart"
+  , "XMLMiscCommentStr"
+  , "XMLMiscCommentE"
+  , "XMLMiscProcessingInstructionStrStart"
+  , "XMLMiscProcessingInstructionStr"
+  , "XMLMiscProcessingInstructionE"
   , "XMLDocTypeNameS"
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
@@ -303,25 +303,25 @@ onXMLDeclPostStandaloneNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure
 onXMLDeclPostStandaloneWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostStandaloneWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclStandaloneWhitespaceE
 
-onXMLDeclVersionStrEnd : (x : XMLSTCK) => XMLDeclVersion -> F1 q XMLST
+onXMLDeclVersionStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
 onXMLDeclVersionStrEnd v = push1 x.xmldecl v >> pure XMLDeclVersionE
 
-onXMLDeclEncodingStrEnd : (x : XMLSTCK) => XMLDeclEncoding -> F1 q XMLST
+onXMLDeclEncodingStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
 onXMLDeclEncodingStrEnd v = push1 x.xmldecl v >> pure XMLDeclEncodingE
 
-onXMLDeclStandaloneStrEnd : (x : XMLSTCK) => XMLDeclStandalone -> F1 q XMLST
+onXMLDeclStandaloneStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
 onXMLDeclStandaloneStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
 
-onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLDeclMiscComment -> F1 q XMLST
+onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
 
-onXMLDeclMiscProcessingInstructionStrEnd : (x : XMLSTCK) => XMLDeclMiscProcessingInstruction -> F1 q XMLST
+onXMLDeclMiscProcessingInstructionStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLDeclMiscProcessingInstructionStrEnd v = T1.do
   s <- getStr
   let (pitarget, pidata) = break (\x -> x == ' ' || x == '\n' || x == '\r' || x == '\RS') s
-      pi = XMLDeclMiscProcessingInstruction pitarget pidata
+      pi = XMLMiscProcessingInstruction pitarget pidata
   push1 x.xmlpostdeclmisc v
-  pure XMLDeclMiscProcessingInstructionE
+  pure XMLMiscProcessingInstructionE
 
 onXMLPostDeclNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclNLE
@@ -335,7 +335,7 @@ onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >>
 onXMLDocTypeBeforeNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeBeforeNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeBeforeNameWhitespaceE
 
-onXMLDocTypeNameStrEnd : (x : XMLSTCK) => XMLDocTypeName -> F1 q XMLST
+onXMLDocTypeNameStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDocTypeNameStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeNameE
 
 onXMLDocTypeAfterNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
@@ -343,6 +343,9 @@ onXMLDoctypeAfterNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> 
 
 onXMLDocTypeAfterNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeAfterNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterNameWhitespaceE
+
+onXMLDocTypeSystemURIStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
+onXMLDocTypeSystemURIStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
