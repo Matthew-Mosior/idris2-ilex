@@ -198,6 +198,7 @@ xmlinit = T1.do
   , "XMLMiscProcessingInstructionDataStrStart"
   , "XMLMiscProcessingInstructionDataStr"
   , "XMLMiscProcessingInstructionDataE"
+  , "XMLPostDeclMiscFinished"
   , "XMLDocTypeNameS"
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
