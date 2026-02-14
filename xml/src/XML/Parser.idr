@@ -35,10 +35,11 @@ linebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 public export
 data XMLMiscValue : Type where
-  XMLMiscComment               : String -> XMLMiscValue
-  XMLMiscProcessingInstruction : String -> String -> XMLMiscValue
-  XMLMiscNL                    : ByteString -> XMLDeclValue
-  XMLMiscWhitespace            : ByteString -> XMLDeclValue
+  XMLMiscComment                     : String -> XMLMiscValue
+  XMLMiscProcessingInstructionTarget : String -> XMLMiscValue
+  XMLMiscProcessingInstructionData   : String -> XMLMiscValue
+  XMLMiscNL                          : ByteString -> XMLDeclValue
+  XMLMiscWhitespace                  : ByteString -> XMLDeclValue
 
 --------------------------------------------------------------------------------
 --          XMLDeclValue
@@ -58,11 +59,12 @@ data XMLDeclValue : Type where
 
 public export
 data XMLDocTypeValue : Type where
-  XMLDocTypeSystem     : String -> XMLDocTypeValue
-  XMLDocTypePublic     : String -> String -> XMLDocTypeValue
-  XMLDocTypeName       : String -> XMLDocTypeValue
-  XMLDocTypeNL         : ByteString -> XMLDocTypeValue
-  XMLDocTypeWhitespace : ByteString -> XMLDocTypeValue
+  XMLDocTypeName           : String -> XMLDocTypeValue
+  XMLDocTypeSystem         : String -> XMLDocTypeValue
+  XMLDocTypePublicPublicID : String -> XMLDocTypeValue
+  XMLDocTypePublicSystemID : String -> XMLDocTypeValue
+  XMLDocTypeNL             : ByteString -> XMLDocTypeValue
+  XMLDocTypeWhitespace     : ByteString -> XMLDocTypeValue
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
@@ -213,8 +215,8 @@ xmlinit = T1.do
   , "XMLDocTypeBeforeNameWhitespaceE"
   , "XMLDocTypeAfterNameNLE"
   , "XMLDocTypeAfterNameWhitespaceE"
-  , "XMLDocTypeAfterSystemNLE"
-  , "XMLDocTypeAfterSystemWhitespaceE"
+  , "XMLDocTypeAfterSystemURINLE"
+  , "XMLDocTypeAfterSystemURIWhitespaceE"
   , "XMLDocTypeAfterPublicNLE"
   , "XMLDocTypeAfterPublicWhitespaceE"
   , "XMLDocTypeAfterPublicIDNLE"
@@ -345,7 +347,13 @@ onXMLDocTypeAfterNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeAfterNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterNameWhitespaceE
 
 onXMLDocTypeSystemURIStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDocTypeSystemURIStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
+onXMLDocTypeSystemURIStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeSystemURIE
+
+onXMLDocTypeAfterSystemURINL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLDoctypeAfterSystemURINL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeAfterSystemURINLE
+
+onXMLDocTypeAfterSystemURIWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLDoctypeAfterSystemURIWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterSystemURIWhitespaceE
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
@@ -529,7 +537,7 @@ xmlDocTypeNameStr =
   dfa
     [ cclose linebreak $ getStr >>= onXMLDocTypeNameStrEnd . XMLDocTypeName
     , cclose whitespace $ getStr >>= onXMLDocTypeNameStrEnd . XMLDocTypeName
-    , read (plus dot) (pushStr XMLDeclVersionStr)
+    , read (plus $ dot && not linebreak && not whitespace) (pushStr XMLDeclVersionStr)
     ]
 
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
@@ -571,7 +579,39 @@ xmlDocTypeSystemURIStr =
   dfa
     [ cclose linebreak $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
     , cclose whitespace $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
-    , read (plus dot) (pushStr XMLDeclVersionStr)
+    , read (plus $ dot && not linebreak && not whitespace) (pushStr XMLDeclVersionStr)
+    ]
+
+xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
+    , read '>' (pure XMLDocTypeFinished)
+    ]
+
+xmlDocTypePublicPublicIDS : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDS =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    , copen dot (pure XMLDocTypePublicPublicIDStrStart)
+    ]
+
+xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDStr =
+  dfa
+    [ cclose linebreak $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
+    , cclose whitespace $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
+    , read (plus $ dot && not linebreak && not whitespace) (pushStr XMLDoctypePubliPublicIDStr)
+    ]
+
+xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
+    , read '>' (pure XMLDocTypeFinished)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
@@ -604,9 +644,15 @@ xmlSteps =
     , E XMLDocTypeNameS xmlDocTypeNameS
     , E XMLDocTypeBeforeNameNLE xmlDocTypeBeforeNameNLAfter
     , E XMLDocTypeBeforeNameWhitespaceE xmlDocTypeBeforeNameWhitespaceAfter
+    , E XMLDocTypeNameStrStart xmlDocTypeNameStr
     , E XMLDocTypeNameE xmlDocTypeNameAfter
     , E XMLDocTypeAfterNameNLE xmlDocTypeAfterNameNLAfter
     , E XMLDocTypeAfterNameWhitespaceE xmlDocTypeAfterNameWhitespaceAfter
+    , E XMLDocTypeSystemURIS xmlDocTypeSystemURIS
+    , E XMLDocTypeSystemURIStrStart xmlDocTypeSystemURIStr
+    , E XMLDocTypeSystemURIE xmlDocTypeSystemURIAfter
+    , E XMLDocTypeAfterSystemURINLE xmlDocTypeSystemURIAfter
+    , E XMLDocTypeAfterSystemURIWhitespaceE xmlDocTypeSystemURIAfter
     ]
 
 xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
