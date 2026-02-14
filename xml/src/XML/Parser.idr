@@ -35,9 +35,9 @@ linebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 public export
 data XMLMiscValue : Type where
-  XMLMiscComment                     : String -> XMLMiscValue
-  XMLMiscProcessingInstructionTarget : String -> XMLMiscValue
-  XMLMiscProcessingInstructionData   : String -> XMLMiscValue
+  XMLMiscComment                     : ByteString -> XMLMiscValue
+  XMLMiscProcessingInstructionTarget : ByteString -> XMLMiscValue
+  XMLMiscProcessingInstructionData   : ByteString -> XMLMiscValue
   XMLMiscNL                          : ByteString -> XMLDeclValue
   XMLMiscWhitespace                  : ByteString -> XMLDeclValue
 
@@ -59,10 +59,10 @@ data XMLDeclValue : Type where
 
 public export
 data XMLDocTypeValue : Type where
-  XMLDocTypeName           : String -> XMLDocTypeValue
-  XMLDocTypeSystem         : String -> XMLDocTypeValue
-  XMLDocTypePublicPublicID : String -> XMLDocTypeValue
-  XMLDocTypePublicSystemID : String -> XMLDocTypeValue
+  XMLDocTypeName           : ByteString -> XMLDocTypeValue
+  XMLDocTypeSystem         : ByteString -> XMLDocTypeValue
+  XMLDocTypePublicPublicID : ByteString -> XMLDocTypeValue
+  XMLDocTypePublicSystemID : ByteString -> XMLDocTypeValue
   XMLDocTypeNL             : ByteString -> XMLDocTypeValue
   XMLDocTypeWhitespace     : ByteString -> XMLDocTypeValue
 
@@ -203,7 +203,6 @@ xmlinit = T1.do
   , "XMLDocTypeSystemURIStrStart"
   , "XMLDocTypeSystemURIStr"
   , "XMLDocTypeSystemURIE"
-  , "XMLDocTypePublicPublicIDS"
   , "XMLDocTypePublicPublicIDStrStart"
   , "XMLDocTypePublicPublicIDStr"
   , "XMLDocTypePublicPublicIDE"
@@ -355,6 +354,13 @@ onXMLDoctypeAfterSystemURINL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v
 onXMLDocTypeAfterSystemURIWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeAfterSystemURIWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterSystemURIWhitespaceE
 
+onXMLDocTypePublicPublicIDStrEnd : (x : XMLSTCK) => ByteString -> F1 q XMLST
+onXMLDocTypePublicPublicIDStrEnd v = T1.do
+  s <- getStr
+  push1 x.xmldoctype (XMLDocTypePublicPublicID s)
+  push1 x.xmldoctype (XMLDocTypeNL v)
+  pure XMLDocTypeAfterPublicPublic
+
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
   incline 1
@@ -445,17 +451,18 @@ xmlPostDeclStart =
   dfa
     [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
     , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
-    , copen (str "<!--") (pure XMLDeclMiscCommentStrStart)
-    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionStrStart)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
-    , copen '<' (pure XMLElementStartTagNameStrStart)
+    , read (str "<!--") (pure XMLMiscCommentStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
-xmlDeclMiscCommentStr : DFA q XMLSz XMLSTCK
-xmlDeclMiscCommentStr =
+xmlPostDeclMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscCommentStr =
   dfa
-    [ cclose "-->" $ getStr >>= onXMLDeclMiscCommentStrEnd . XMLMiscComment
-    , read (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
+    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    , conv (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
     ]
 
 xmlDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
@@ -463,10 +470,10 @@ xmlDeclMiscCommentAfter =
   dfa
     [ conv linebreak (\bs => onXMLDeclNL bs)
     , conv whitespace (\bs => onXMLDeclWhitespace bs)
-    , copen (str "<!-") (pure XMLDeclMiscCommentS)
-    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionStrStart)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
-    , copen '<' (pure XMLElementStartTagNameStrStart)
+    , read (str "<!--") (pure XMLMiscCommentStr)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
+    , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
 xmlDeclMiscProcessingInstructionStr : DFA q XMLSz XMLSTCK
@@ -481,10 +488,10 @@ xmlDeclMiscProcessingInstructionAfter =
   dfa
     [ conv linebreak (\bs => onXMLDeclNL bs)
     , conv whitespace (\bs => onXMLDeclWhitespace bs)
-    , copen (str "<!--") (pure XMLDeclMiscCommentStrStart)
-    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionStrStart)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
-    , copen '<' (pure XMLElementStartTagNameStrStart)
+    , read (str "<!--") (pure XMLMiscCommentStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
+    , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
 xmlPostDeclNLAfter : DFA q XMLSz XMLSTCK
@@ -492,10 +499,10 @@ xmlPostDeclNLAfter =
   dfa
     [ conv linebreak (\bs => onXMLPostDeclNL bs)
     , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
-    , copen (str "<!-") (pure XMLDeclMiscCommentS)
-    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionS)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
-    , copen '<' (pure XMLElementStartTagNameStrStart)
+    , read (str "<!-") (pure XMLMiscCommentStr)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStr)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
+    , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
 xmlPostDeclWhitespaceAfter : DFA q XMLSz XMLSTCK
@@ -503,17 +510,18 @@ xmlPostDeclWhitespaceAfter =
   dfa
     [ conv linebreak (\bs => onXMLPostDeclNL bs)
     , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
-    , copen (str "<!-") (pure XMLDeclMiscCommentS)
-    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionS)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , copen (str "<!-") (pure XMLMiscCommentStr)
+    , copen (str "<?") (pure XMLMiscProcessingInstructionStr)
+    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
     , copen '<' (pure XMLElementStartTagNameStrStart)
     ]
 
-xmlDocTypeNameS : DFA q XMLSz XMLSTCK
-xmlDocTypeNameS =
+xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
+xmlDocTypeNameStr =
   dfa
     [ conv linebreak (\bs => onXMLDocTypeNL bs)
     , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
+    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypeNameStrEnd . XMLDocTypeName)
     ]
 
 xmlDocTypeBeforeNameNLAfter : DFA q XMLSz XMLSTCK
@@ -530,14 +538,6 @@ xmlDocTypeBeforeNameWhitespaceAfter =
     [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
     , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
     , copen dot (pure XMLElementStartTagNameStrStart)
-    ]
-
-xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
-xmlDocTypeNameStr =
-  dfa
-    [ cclose linebreak $ getStr >>= onXMLDocTypeNameStrEnd . XMLDocTypeName
-    , cclose whitespace $ getStr >>= onXMLDocTypeNameStrEnd . XMLDocTypeName
-    , read (plus $ dot && not linebreak && not whitespace) (pushStr XMLDeclVersionStr)
     ]
 
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
@@ -562,24 +562,16 @@ xmlDocTypeAfterNameWhitespaceAfter =
   dfa
     [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
     , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)  
-    , read "SYSTEM" (pure XMLDocTypeSystemURIS)
-    , read "PUBLIC" (pure XMLDocTypePublicPublicIDS)
-    ]
-
-xmlDocTypeSystemURIS : DFA q XMLSz XMLSTCK
-xmlDocTypeSystemURIS =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
-    , copen dot (pure XMLDocTypeSystemURIStrStart)
+    , read "SYSTEM" (pure XMLDocTypeSystemURIStr)
+    , read "PUBLIC" (pure XMLDocTypePublicPublicIDStr)
     ]
 
 xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
 xmlDocTypeSystemURIStr =
   dfa
-    [ cclose linebreak $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
-    , cclose whitespace $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
-    , read (plus $ dot && not linebreak && not whitespace) (pushStr XMLDeclVersionStr)
+    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
+    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem)
     ]
 
 xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
@@ -588,22 +580,14 @@ xmlDocTypeSystemURIAfter =
     [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
     , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
     , read '>' (pure XMLDocTypeFinished)
-    ]
-
-xmlDocTypePublicPublicIDS : DFA q XMLSz XMLSTCK
-xmlDocTypePublicPublicIDS =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
-    , copen dot (pure XMLDocTypePublicPublicIDStrStart)
     ]
 
 xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDStr =
   dfa
-    [ cclose linebreak $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
-    , cclose whitespace $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
-    , read (plus $ dot && not linebreak && not whitespace) (pushStr XMLDoctypePubliPublicIDStr)
+    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
     ]
 
 xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
@@ -612,6 +596,110 @@ xmlDocTypeSystemURIAfter =
     [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
     , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
     , read '>' (pure XMLDocTypeFinished)
+    ]
+
+
+
+
+
+
+
+
+
+
+
+
+xmlInit : DFA q XMLSz XMLSTCK
+xmlInit =
+  dfa
+    [ read (str "<?xml version=") (pure XMLDeclVersionS)
+    , copen (str "<!--") (pure XMLDeclMiscCommentS)
+    , copen (str "<?") (pure XMLDeclMiscProcessingInstructionS)
+    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , copen '<' (pure XMLElementStartTagNameS)
+    ]
+
+xmlDeclVersionAfter : DFA q XMLSz XMLSTCK
+xmlDeclVersionAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclPostVersionNL bs)
+    , conv whitespace (\bs => onXMLDeclPostVersionWhitespace bs)
+    , read (str "encoding=") (pure XMLDeclEncodingS)
+    , read (str "standalone=") (pure XMLDeclStandaloneS)
+    , read (str "?>") (pure XMLDeclFinished)
+    ]
+
+xmlDeclEncodingAfter : DFA q XMLSz XMLSTCK
+xmlDeclEncodingAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclPostEncodingNL bs)
+    , conv whitespace (\bs => onXMLDeclPostEncodingWhitespace bs)
+    , read (str "standalone=") (pure XMLDeclStandaloneS)
+    , read (str "?>") (pure XMLDeclFinished)
+    ]
+
+xmlDeclStandaloneAfter : DFA q XMLSz XMLSTCK
+xmlDeclStandaloneAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
+    , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
+    , read (str "?>") (pure XMLDeclFinished)
+    ]
+
+xmlPostDeclStart : DFA q XMLSz XMLSTCK
+xmlPostDeclStart =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
+    , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
+    , read (str "<!--") (pure XMLMiscCommentStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , read '<' (pure XMLElementStartTagNameStrStart)
+    ]
+
+xmlPostDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscCommentAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclNL bs)
+    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    , read (str "<!--") (pure XMLMiscCommentStr)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
+    , read '<' (pure XMLElementStartTagNameStrStart)
+    ]
+
+xmlPostDeclMiscProcessingInstructionAfter : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDeclNL bs)
+    , conv whitespace (\bs => onXMLDeclWhitespace bs)
+    , read (str "<!--") (pure XMLMiscCommentStrStart)
+    , read (str "<?") (pure XMLMiscProcessingInstructionStrStart)
+    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
+    , read '<' (pure XMLElementStartTagNameStrStart)
+    ]
+
+xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeNameAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)
+    , read '>' (pure XMLDocTypeFinished)
+    ]
+
+xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
+    , read '>' (pure XMLDocTypeFinished)
+    ]
+
+xmlDocTypePublicPublicIDAfter : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
@@ -648,7 +736,6 @@ xmlSteps =
     , E XMLDocTypeNameE xmlDocTypeNameAfter
     , E XMLDocTypeAfterNameNLE xmlDocTypeAfterNameNLAfter
     , E XMLDocTypeAfterNameWhitespaceE xmlDocTypeAfterNameWhitespaceAfter
-    , E XMLDocTypeSystemURIS xmlDocTypeSystemURIS
     , E XMLDocTypeSystemURIStrStart xmlDocTypeSystemURIStr
     , E XMLDocTypeSystemURIE xmlDocTypeSystemURIAfter
     , E XMLDocTypeAfterSystemURINLE xmlDocTypeSystemURIAfter
