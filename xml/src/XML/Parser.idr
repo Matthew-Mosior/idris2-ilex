@@ -494,13 +494,6 @@ xmlPostDeclWhitespaceAfter =
     , copen '<' (pure XMLElementStartTagNameStrStart)
     ]
 
-xmlElementStartTagStr : DFA q XMLSz XMLSTCK
-xmlElementStartTagStr =
-  dfa
-    [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
-    , read (plus $ dot && not spaceSeparator) (pushStr XMLDeclVersionStr)
-    ]
-
 xmlDocTypeNameS : DFA q XMLSz XMLSTCK
 xmlDocTypeNameS =
   dfa
