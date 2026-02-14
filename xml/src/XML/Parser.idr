@@ -37,6 +37,8 @@ public export
 data XMLMiscValue : Type where
   XMLMiscComment               : String -> XMLMiscValue
   XMLMiscProcessingInstruction : String -> String -> XMLMiscValue
+  XMLMiscNL                    : ByteString -> XMLDeclValue
+  XMLMiscWhitespace            : ByteString -> XMLDeclValue
 
 --------------------------------------------------------------------------------
 --          XMLDeclValue
@@ -301,12 +303,6 @@ onXMLDeclPostStandaloneNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure
 onXMLDeclPostStandaloneWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostStandaloneWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclStandaloneWhitespaceE
 
-onXMLPostDeclNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLPostDeclNLE
-
-onXMLPostDeclWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLPostDeclWhitespaceE
-
 onXMLDeclVersionStrEnd : (x : XMLSTCK) => XMLDeclVersion -> F1 q XMLST
 onXMLDeclVersionStrEnd v = push1 x.xmldecl v >> pure XMLDeclVersionE
 
@@ -326,6 +322,12 @@ onXMLDeclMiscProcessingInstructionStrEnd v = T1.do
       pi = XMLDeclMiscProcessingInstruction pitarget pidata
   push1 x.xmlpostdeclmisc v
   pure XMLDeclMiscProcessingInstructionE
+
+onXMLPostDeclNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclNLE
+
+onXMLPostDeclWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclWhitespaceE
 
 onXMLDocTypeBeforeNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeBeforeNameNLE
@@ -430,7 +432,9 @@ xmlDeclStandaloneAfter =
 xmlPostDeclStart : DFA q XMLSz XMLSTCK
 xmlPostDeclStart =
   dfa
-    [ copen (str "<!--") (pure XMLDeclMiscCommentStrStart)
+    [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
+    , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
+    , copen (str "<!--") (pure XMLDeclMiscCommentStrStart)
     , copen (str "<?") (pure XMLDeclMiscProcessingInstructionStrStart)
     , copen (str "<!DOCTYPE") (pure XMLDocTypeNameS)
     , copen '<' (pure XMLElementStartTagNameStrStart)
