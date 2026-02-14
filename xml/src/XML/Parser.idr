@@ -199,10 +199,11 @@ xmlinit = T1.do
   , "XMLDocTypeSystemURIStrStart"
   , "XMLDocTypeSystemURIStr"
   , "XMLDocTypeSystemURIE"
-  , "XMLDocTypePublicS"
+  , "XMLDocTypePublicPublicIDS"
   , "XMLDocTypePublicPublicIDStrStart"
   , "XMLDocTypePublicPublicIDStr"
   , "XMLDocTypePublicPublicIDE"
+  , "XMLDocTypePublicSystemIDS"
   , "XMLDocTypePublicSystemIDStrStart"
   , "XMLDocTypePublicSystemIDStr"
   , "XMLDocTypePublicSystemIDE"
@@ -544,8 +545,8 @@ xmlDocTypeAfterNameNLAfter =
   dfa
     [ conv linebreak (\bs => onXMLDocTypeNL bs)
     , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
-    , read "SYSTEM" (pure XMLDocTypeSystemS)
-    , read "PUBLIC" (pure XMLDocTypePublicS)
+    , read "SYSTEM" (pure XMLDocTypeSystemURIS)
+    , read "PUBLIC" (pure XMLDocTypePublicPublicIDS)
     ]
 
 xmlDocTypeAfterNameWhitespaceAfter : DFA q XMLSz XMLSTCK
