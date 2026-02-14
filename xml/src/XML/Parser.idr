@@ -186,19 +186,19 @@ xmlinit = T1.do
   , "XMLDeclStandaloneE"
   , "XMLDeclStandaloneNLE"
   , "XMLDeclStandaloneWhitespaceE"
-  , "XMLDeclFinished"
+  , "XMLPostDeclStart"
   , "XMLPostDeclNLE"
   , "XMLPostDeclWhitespaceE"
-  , "XMLPostMiscCommentStrStart"
-  , "XMLPostMiscCommentStr"
-  , "XMLPostMiscCommentE"
-  , "XMLPostMiscProcessingInstructionTargetStrStart"
-  , "XMLPostMiscProcessingInstructionTargetStr"
-  , "XMLPostMiscProcessingInstructionTargetE"
-  , "XMLPostMiscProcessingInstructionDataStrStart"
-  , "XMLPostMiscProcessingInstructionDataStr"
-  , "XMLPostMiscProcessingInstructionDataE"
-  , "XMLPostDeclMiscFinished"
+  , "XMLPostDeclMiscCommentStrStart"
+  , "XMLPostDeclMiscCommentStr"
+  , "XMLPostDeclMiscCommentE"
+  , "XMLPostDeclMiscProcessingInstructionTargetStrStart"
+  , "XMLPostDeclMiscProcessingInstructionTargetStr"
+  , "XMLPostDeclMiscProcessingInstructionTargetE"
+  , "XMLPostDeclMiscProcessingInstructionDataStrStart"
+  , "XMLPostDeclMiscProcessingInstructionDataStr"
+  , "XMLPostDeclMiscProcessingInstructionDataE"
+  , "XMLPostDeclMiscProcessingInstructionE"
   , "XMLDocTypeNameS"
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
@@ -224,7 +224,6 @@ xmlinit = T1.do
   , "XMLDocTypeAfterPublicWhitespaceE"
   , "XMLDocTypeAfterPublicIDNLE"
   , "XMLDocTypeAfterPublicIDWhitespaceE"
-  , "XMLDoctypeFinished"
   , "XMLElementEmptyTagS"
   , "XMLElementEmptyTagStrStart"
   , "XMLElementEmptyTagStr"
@@ -271,7 +270,6 @@ xmlinit = T1.do
   , "XMLElementEndTagStrStart"
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
-  , "XMLElementFinished"
   , "XMLPostElementMiscCommentStrStart"
   , "XMLPostElementMiscCommentStr"
   , "XMLPostElementMiscCommentE"
@@ -281,7 +279,6 @@ xmlinit = T1.do
   , "XMLPostElementMiscProcessingInstructionDataStrStart"
   , "XMLPostElementMiscProcessingInstructionDataStr"
   , "XMLPostElementMiscProcessingInstructionDataE"
-  , "XMLPostElementMiscFinished"
   , "XMLFinished"
   ]
 
@@ -553,7 +550,7 @@ xmlDeclVersionAfter =
     , conv whitespace (\bs => onXMLDeclPostVersionWhitespace bs)
     , read (str "encoding=") (pure XMLDeclEncodingS)
     , read (str "standalone=") (pure XMLDeclStandaloneS)
-    , read (str "?>") (pure XMLDeclFinished)
+    , read (str "?>") (pure XMLPostDeclStart)
     ]
 
 xmlDeclEncodingAfter : DFA q XMLSz XMLSTCK
@@ -562,7 +559,7 @@ xmlDeclEncodingAfter =
     [ conv linebreak (\bs => onXMLDeclPostEncodingNL bs)
     , conv whitespace (\bs => onXMLDeclPostEncodingWhitespace bs)
     , read (str "standalone=") (pure XMLDeclStandaloneS)
-    , read (str "?>") (pure XMLDeclFinished)
+    , read (str "?>") (pure XMLPostDeclStart)
     ]
 
 xmlDeclStandaloneAfter : DFA q XMLSz XMLSTCK
@@ -570,7 +567,7 @@ xmlDeclStandaloneAfter =
   dfa
     [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
     , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
-    , read (str "?>") (pure XMLDeclFinished)
+    , read (str "?>") (pure XMLPostDeclStart)
     ]
 
 xmlPostDeclStart : DFA q XMLSz XMLSTCK
@@ -595,15 +592,20 @@ xmlPostDeclMiscCommentAfter =
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
-xmlPostDeclMiscProcessingInstructionAfter : DFA q XMLSz XMLSTCK
-xmlPostDeclMiscProcessingInstructionAfter =
+xmlPostDeclMiscProcessingInstructionTargetAfter : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionTargetAfter =
   dfa
     [ conv linebreak (\bs => onXMLPostDeclNL bs)
     , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
-    , read (str "<!--") (pure XMLMiscCommentStrStart)
-    , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
-    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
-    , read '<' (pure XMLElementStartTagNameStrStart)
+    , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
+    ]
+
+xmlPostDeclMiscProcessingInstructionDataAfter : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionDataAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
     ]
 
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
@@ -648,25 +650,7 @@ xmlSteps =
     , E XMLDeclStandaloneNLE xmlDeclStandaloneAfter
     , E XMLDeclStandaloneWhitespaceE xmlDeclStandaloneAfter
     , E XMLDeclStandaloneE xmlDeclStandaloneAfter
-    , E XMLDeclFinished xmlPostDeclStart
-    , E XMLDeclMiscCommentStrStart xmlDeclMiscCommentStr
-    , E XMLDeclMiscCommentE xmlDeclMiscCommentAfter
-    , E XMLDeclMiscProcessingInstructionStrStart xmlDeclMiscProcessingInstructionStr
-    , E XMLDeclMiscProcessingInstructionE xmlDeclMiscProcessingInstructionAfter
-    , E XMLPostDeclNLE xmlPostDeclNLAfter
-    , E XMLPostDeclWhitespaceE xmlPostDeclWhitespaceAfter
-    , E XMLDeclFinished xmlPostDecl
-    , E XMLDocTypeNameS xmlDocTypeNameS
-    , E XMLDocTypeBeforeNameNLE xmlDocTypeBeforeNameNLAfter
-    , E XMLDocTypeBeforeNameWhitespaceE xmlDocTypeBeforeNameWhitespaceAfter
-    , E XMLDocTypeNameStrStart xmlDocTypeNameStr
-    , E XMLDocTypeNameE xmlDocTypeNameAfter
-    , E XMLDocTypeAfterNameNLE xmlDocTypeAfterNameNLAfter
-    , E XMLDocTypeAfterNameWhitespaceE xmlDocTypeAfterNameWhitespaceAfter
-    , E XMLDocTypeSystemURIStrStart xmlDocTypeSystemURIStr
-    , E XMLDocTypeSystemURIE xmlDocTypeSystemURIAfter
-    , E XMLDocTypeAfterSystemURINLE xmlDocTypeSystemURIAfter
-    , E XMLDocTypeAfterSystemURIWhitespaceE xmlDocTypeSystemURIAfter
+    , E XMLPostDeclStart xmlPostDeclStart
     ]
 
 xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
