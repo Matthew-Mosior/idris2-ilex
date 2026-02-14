@@ -281,7 +281,7 @@ xmlinit = T1.do
   , "XMLPostElementMiscProcessingInstructionDataStrStart"
   , "XMLPostElementMiscProcessingInstructionDataStr"
   , "XMLPostElementMiscProcessingInstructionDataE"
-  , "XMLPostDeclMiscFinished"
+  , "XMLPostElementMiscFinished"
   , "XMLFinished"
   ]
 
