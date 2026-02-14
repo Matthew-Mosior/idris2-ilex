@@ -195,16 +195,27 @@ xmlinit = T1.do
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
   , "XMLDocTypeNameE"
-  , "XMLDocTypeSystemS"
-  , "XMLDocTypeSystemStrStart"
-  , "XMLDocTypeSystemStr"
-  , "XMLDocTypeSystemE"
+  , "XMLDocTypeSystemURIS"
+  , "XMLDocTypeSystemURIStrStart"
+  , "XMLDocTypeSystemURIStr"
+  , "XMLDocTypeSystemURIE"
   , "XMLDocTypePublicS"
-  , "XMLDocTypePublicStrStart"
-  , "XMLDocTypePublicStr"
-  , "XMLDocTypePublicE"
-  , "XMLDocTypeNLE"
-  , "XMLDocTypeWhitespaceE"
+  , "XMLDocTypePublicPublicIDStrStart"
+  , "XMLDocTypePublicPublicIDStr"
+  , "XMLDocTypePublicPublicIDE"
+  , "XMLDocTypePublicSystemIDStrStart"
+  , "XMLDocTypePublicSystemIDStr"
+  , "XMLDocTypePublicSystemIDE"
+  , "XMLDocTypeBeforeNameNLE"
+  , "XMLDocTypeBeforeNameWhitespaceE"
+  , "XMLDocTypeAfterNameNLE"
+  , "XMLDocTypeAfterNameWhitespaceE"
+  , "XMLDocTypeAfterSystemNLE"
+  , "XMLDocTypeAfterSystemWhitespaceE"
+  , "XMLDocTypeAfterPublicNLE"
+  , "XMLDocTypeAfterPublicWhitespaceE"
+  , "XMLDocTypeAfterPublicIDNLE"
+  , "XMLDocTypeAfterPublicIDWhitespaceE"
   , "XMLDoctypeFinished"
   , "XMLElementEmptyTagS"
   , "XMLElementEmptyTagStrStart"
@@ -271,28 +282,28 @@ xmlErr =
 --          State Transitions
 --------------------------------------------------------------------------------
 
-onXMLDeclPostVersionNL : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclPostVersionNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostVersionNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclVersionNLE
 
-onXMLDeclPostVersionWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclPostVersionWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostVersionWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclVersionWhitespaceE
 
-onXMLDeclPostEncodingNL : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclPostEncodingNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostEncodingNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclEncodingNLE
 
-onXMLDeclPostEncodingWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclPostEncodingWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostEncodingWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclEncodingWhitespaceE
 
-onXMLDeclPostStandaloneNL : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclPostStandaloneNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostStandaloneNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclStandaloneNLE
 
-onXMLDeclPostStandaloneWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLDeclPostStandaloneWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDeclPostStandaloneWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclStandaloneWhitespaceE
 
-onXMLPostDeclNL : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLPostDeclNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLPostDeclNLE
 
-onXMLPostDeclWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
+onXMLPostDeclWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLPostDeclWhitespaceE
 
 onXMLDeclVersionStrEnd : (x : XMLSTCK) => XMLDeclVersion -> F1 q XMLST
@@ -315,14 +326,20 @@ onXMLDeclMiscProcessingInstructionStrEnd v = T1.do
   push1 x.xmlpostdeclmisc v
   pure XMLDeclMiscProcessingInstructionE
 
-onXMLDocTypeNL : (x : FSTCK q) => ByteString -> F1 q FST
-onXMLDoctypeNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeNLE
+onXMLDocTypeBeforeNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeBeforeNameNLE
 
-onXMLDocTypeWhitespace : (x : FSTCK q) => ByteString -> F1 q FST
-onXMLDoctypeWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeWhitespaceE
+onXMLDocTypeBeforeNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLDoctypeBeforeNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeBeforeNameWhitespaceE
 
 onXMLDocTypeNameStrEnd : (x : XMLSTCK) => XMLDocTypeName -> F1 q XMLST
 onXMLDocTypeNameStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeNameE
+
+onXMLDocTypeAfterNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLDoctypeAfterNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeAfterNameNLE
+
+onXMLDocTypeAfterNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLDoctypeAfterNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterNameWhitespaceE
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
@@ -490,19 +507,19 @@ xmlDocTypeNameS =
     , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
     ]
 
-xmlDocTypeNLAfter : DFA q XMLSz XMLSTCK
-xmlDocTypeNLAfter =
+xmlDocTypeBeforeNameNLAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeBeforeNameNLAfter =
   dfa
     [ conv linebreak (\bs => onXMLDocTypeNL bs)
     , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
     , copen dot (pure XMLDocTypeNameStrStart)
     ]
 
-xmlDocTypeWhitespaceAfter : DFA q XMLSz XMLSTCK
-xmlDocTypeWhitespaceAfter =
+xmlDocTypeBeforeNameWhitespaceAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeBeforeNameWhitespaceAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeNL bs)
-    , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
+    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
     , copen dot (pure XMLElementStartTagNameStrStart)
     ]
 
@@ -517,9 +534,26 @@ xmlDocTypeNameStr =
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeNameAfter =
   dfa
+    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)
+    , read '>' (pure XMLDocTypeFinished)
+    ]
+
+xmlDocTypeAfterNameNLAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeAfterNameNLAfter =
+  dfa
     [ conv linebreak (\bs => onXMLDocTypeNL bs)
     , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
-    , read '>' (pure XMLDocTypeFinished)
+    , read "SYSTEM" (pure XMLDocTypeSystemS)
+    , read "PUBLIC" (pure XMLDocTypePublicS)
+    ]
+
+xmlDocTypeAfterNameWhitespaceAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeAfterNameWhitespaceAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
+    , copen dot (pure XMLElementStartTagNameStrStart)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
@@ -550,9 +584,11 @@ xmlSteps =
     , E XMLPostDeclWhitespaceE xmlPostDeclWhitespaceAfter
     , E XMLDeclFinished xmlPostDecl
     , E XMLDocTypeNameS xmlDocTypeNameS
-    , E XMLDocTypeNLE xmlPostDeclNLAfter
-    , E XMLDocTypeWhitespaceE xmlPostDeclWhitespaceAfter
+    , E XMLDocTypeBeforeNameNLE xmlDocTypeBeforeNameNLAfter
+    , E XMLDocTypeBeforeNameWhitespaceE xmlDocTypeBeforeNameWhitespaceAfter
     , E XMLDocTypeNameE xmlDocTypeNameAfter
+    , E XMLDocTypeAfterNameNLE xmlDocTypeAfterNameNLAfter
+    , E XMLDocTypeAfterNameWhitespaceE xmlDocTypeAfterNameWhitespaceAfter
     ]
 
 xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
