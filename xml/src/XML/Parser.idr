@@ -358,12 +358,11 @@ onXMLDoctypeAfterSystemURINL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v
 onXMLDocTypeAfterSystemURIWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeAfterSystemURIWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterSystemURIWhitespaceE
 
-onXMLDocTypePublicPublicIDStrEnd : (x : XMLSTCK) => ByteString -> F1 q XMLST
-onXMLDocTypePublicPublicIDStrEnd v = T1.do
-  s <- getStr
-  push1 x.xmldoctype (XMLDocTypePublicPublicID s)
-  push1 x.xmldoctype (XMLDocTypeNL v)
-  pure XMLDocTypeAfterPublicPublic
+onXMLDocTypePublicPublicPublicIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypePublicPublicPublicIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicPublicIDE
+
+onXMLDocTypePublicPublicSystemIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypePublicPublicSystemIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicSystemIDE
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
@@ -506,6 +505,14 @@ xmlDocTypePublicPublicIDStr =
     [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
     , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
     , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
+    ]
+
+xmlDocTypePublicSystemIDStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicSystemIDStr =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeBeforePublicSystemIDNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforePublicSystemIDWhitespace bs)
+    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
     ]
 
 xmlInit : DFA q XMLSz XMLSTCK
