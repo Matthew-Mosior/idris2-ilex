@@ -549,6 +549,10 @@ xmlDocTypePublicSystemIDStr =
     , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
     ]
 
+--------------------------------------------------------------------------------
+--          State Transitions (main)
+--------------------------------------------------------------------------------
+
 xmlInit : DFA q XMLSz XMLSTCK
 xmlInit =
   dfa
