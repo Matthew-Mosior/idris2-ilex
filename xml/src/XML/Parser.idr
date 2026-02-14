@@ -511,8 +511,8 @@ xmlDocTypeNameS =
 xmlDocTypeBeforeNameNLAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeBeforeNameNLAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeNL bs)
-    , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
+    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
     , copen dot (pure XMLDocTypeNameStrStart)
     ]
 
@@ -543,8 +543,8 @@ xmlDocTypeNameAfter =
 xmlDocTypeAfterNameNLAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeAfterNameNLAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeNL bs)
-    , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
+    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)
     , read "SYSTEM" (pure XMLDocTypeSystemURIS)
     , read "PUBLIC" (pure XMLDocTypePublicPublicIDS)
     ]
@@ -553,8 +553,9 @@ xmlDocTypeAfterNameWhitespaceAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeAfterNameWhitespaceAfter =
   dfa
     [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
-    , copen dot (pure XMLElementStartTagNameStrStart)
+    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)  
+    , read "SYSTEM" (pure XMLDocTypeSystemURIS)
+    , read "PUBLIC" (pure XMLDocTypePublicPublicIDS)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
