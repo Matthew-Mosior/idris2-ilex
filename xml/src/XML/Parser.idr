@@ -355,10 +355,10 @@ onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
 
 onXMLPostDeclMiscProcessingInstructionTargetStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
-onXMLPostDeclMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLMiscProcessingInstructionTargetE
+onXMLPostDeclMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscProcessingInstructionTargetE
 
 onXMLPostDeclMiscProcessingInstructionDataStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
-onXMLPostDeclMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLMiscProcessingInstructionDataE
+onXMLPostDeclMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscProcessingInstructionDataE
 
 onXMLPostDeclMiscCommentNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclMiscCommentNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscCommentNLE
@@ -482,12 +482,6 @@ xmlPostDeclMiscCommentStr =
     [ conv linebreak (\bs => onXMLPostDeclMiscCommentNL bs)
     , conv whitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
     , conv (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
-    ]
-
-xmlPostDeclMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
-xmlPostDeclMiscProcessingInstructionTargetStr =
-  dfa
-    [ conv (plus $ dot && not linebreak && not whitespace) (onXMLPostDeclProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
     ]
 
 xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
@@ -650,13 +644,14 @@ xmlSteps =
     , E XMLDeclStandaloneE xmlDeclStandaloneAfter
     , E XMLPostDeclStart xmlPostDeclStart
     , E XMLMiscCommentStrStart xmlPostDeclMiscCommentStr
-    , E XMLMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
+    , E XMLPostDeclMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
+    , E XMLPostDeclMiscProcessingInstructionDataE xmlPostDeclMiscProcessingInstructionDataAfter
     , E XMLPostDeclMiscCommentNLE xmlPostDeclStart
     , E XMLPostDeclMiscCommentWhiteSpaceE xmlPostDeclStart
     , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE xmlPostDeclMiscProcessingInstructionTargetAfter
     , E XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE xmlPostDeclMiscProcessingInstructionTargetAfter
-    , E XMLPostDeclMiscAfterProcessingInstructionDataNLE 
-    , E XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
+    , E XMLPostDeclMiscAfterProcessingInstructionDataNLE xmlPostDeclMiscProcessingInstructionDataAfter
+    , E XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE xmlPostDeclMiscProcessingInstructionDataAfter
     , E XMLMiscProcessingInstructionTargetStrStart xmlPostDeclMiscProcessingInstructionTargetStr
     ]
 
