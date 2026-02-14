@@ -490,90 +490,12 @@ xmlPostDeclMiscProcessingInstructionTargetStr =
     [ conv (plus $ dot && not linebreak && not whitespace) (onXMLPostDeclProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
     ]
 
-xmlPostDeclMiscProcessingInstructionTargetAfter : DFA q XMLSz XMLSTCK
-xmlPostDeclMiscProcessingInstructionTargetAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLPostDeclMiscAfterProcessingInstructionTargetNL bs)
-    , conv whitespace (\bs => onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace bs)
-
-    ]
-
-xmlPostDeclMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
-xmlPostDeclMiscProcessingInstructionDataStr =
-  dfa
-    [ conv (plus $ dot && not linebreak && not whitespace && not "?>") (onXMLPostDeclProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
-    ]
-
-xmlPostDeclMiscProcessingInstructionDataAfter : DFA q XMLSz XMLSTCK
-xmlPostDeclMiscProcessingInstructionDataAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
-    , conv "?>" (\_ => onXMLDeclMiscProcessingInstructionDataStrEnd)
-    ]
-
-xmlPostDeclNLAfter : DFA q XMLSz XMLSTCK
-xmlPostDeclNLAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLPostDeclNL bs)
-    , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
-    , read (str "<!-") (pure XMLMiscCommentStr)
-    , read (str "<?") (pure XMLMiscProcessingInstructionStr)
-    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
-    , read '<' (pure XMLElementStartTagNameStrStart)
-    ]
-
-xmlPostDeclWhitespaceAfter : DFA q XMLSz XMLSTCK
-xmlPostDeclWhitespaceAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLPostDeclNL bs)
-    , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
-    , copen (str "<!-") (pure XMLMiscCommentStr)
-    , copen (str "<?") (pure XMLMiscProcessingInstructionStr)
-    , copen (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
-    , copen '<' (pure XMLElementStartTagNameStrStart)
-    ]
-
 xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
 xmlDocTypeNameStr =
   dfa
     [ conv linebreak (\bs => onXMLDocTypeNL bs)
     , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
     , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypeNameStrEnd . XMLDocTypeName)
-    ]
-
-xmlDocTypeBeforeNameNLAfter : DFA q XMLSz XMLSTCK
-xmlDocTypeBeforeNameNLAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
-    , copen dot (pure XMLDocTypeNameStrStart)
-    ]
-
-xmlDocTypeBeforeNameWhitespaceAfter : DFA q XMLSz XMLSTCK
-xmlDocTypeBeforeNameWhitespaceAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
-    , copen dot (pure XMLElementStartTagNameStrStart)
-    ]
-
-xmlDocTypeAfterNameNLAfter : DFA q XMLSz XMLSTCK
-xmlDocTypeAfterNameNLAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)
-    , read "SYSTEM" (pure XMLDocTypeSystemURIS)
-    , read "PUBLIC" (pure XMLDocTypePublicPublicIDS)
-    ]
-
-xmlDocTypeAfterNameWhitespaceAfter : DFA q XMLSz XMLSTCK
-xmlDocTypeAfterNameWhitespaceAfter =
-  dfa
-    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)  
-    , read "SYSTEM" (pure XMLDocTypeSystemURIStr)
-    , read "PUBLIC" (pure XMLDocTypePublicPublicIDStr)
     ]
 
 xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
@@ -731,9 +653,9 @@ xmlSteps =
     , E XMLMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
     , E XMLPostDeclMiscCommentNLE xmlPostDeclStart
     , E XMLPostDeclMiscCommentWhiteSpaceE xmlPostDeclStart
-    , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE xml
-    , E XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
-    , E XMLPostDeclMiscAfterProcessingInstructionDataNLE xml
+    , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE xmlPostDeclMiscProcessingInstructionTargetAfter
+    , E XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE xmlPostDeclMiscProcessingInstructionTargetAfter
+    , E XMLPostDeclMiscAfterProcessingInstructionDataNLE 
     , E XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
     , E XMLMiscProcessingInstructionTargetStrStart xmlPostDeclMiscProcessingInstructionTargetStr
     ]
