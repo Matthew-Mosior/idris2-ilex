@@ -114,13 +114,13 @@ record XMLSTCK (q : Type) where
   psns               : Ref q (SnocList Position)
   strs               : Ref q (SnocList String)
   err                : Ref q (Maybe $ BoundedErr Void)
+  xmlelementstack    : Ref q (SnocList (String, SnocList XMLElementValue))
   xmldecl            : Ref q (SnocList XMLDeclValue)
   xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
   xmldoctype         : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
   xmlrootelement     : Ref q (SnocList XMLElementValue)
   xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
-  xmlelementstack    : Ref q (SnocList (String, SnocList XMLElementValue))
   bytes              : Ref q ByteString
 
 export %inline
@@ -149,15 +149,15 @@ xmlinit = T1.do
   bs <- ref1 [<]
   ss <- ref1 [<]
   er <- ref1 Nothing
+  es <- ref1 [<]
   xmldl <- ref1 [<]
   xmlpdl <- ref1 [<]
   xmldt <- ref1 [<]
   xmlpdt <- ref1 [<]
   xmlre <- ref1 [<]
-  xmlpre <- ref1 [<]
-  es <- ref1 [<]
+  xmlpr <- ref1 [<]
   by <- ref1 ""
-  pure (XML l c bs ss er xmldl xmlpdl xmldt xmlpdt xmlre xmlpre es by)
+  pure (XML l c bs ss er es xmldl xmlpdl xmldt xmlpdt xmlre xmlpr by)
 
 --------------------------------------------------------------------------------
 --          Parser State
