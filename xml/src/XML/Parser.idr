@@ -526,7 +526,7 @@ xmlDocTypeNameStr =
   dfa
     [ cclose linebreak $ getStr >>= onXMLDocTypeNameStrEnd . XMLDocTypeName
     , cclose whitespace $ getStr >>= onXMLDocTypeNameStrEnd . XMLDocTypeName
-    , read (plus $ dot && not spaceSeparator) (pushStr XMLDeclVersionStr)
+    , read (plus dot) (pushStr XMLDeclVersionStr)
     ]
 
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
@@ -549,10 +549,26 @@ xmlDocTypeAfterNameNLAfter =
 xmlDocTypeAfterNameWhitespaceAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeAfterNameWhitespaceAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)  
+    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)  
     , read "SYSTEM" (pure XMLDocTypeSystemURIS)
     , read "PUBLIC" (pure XMLDocTypePublicPublicIDS)
+    ]
+
+xmlDocTypeSystemURIS : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIS =
+  dfa
+    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
+    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
+    , copen dot (pure XMLDocTypeSystemURIStrStart)
+    ]
+
+xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIStr =
+  dfa
+    [ cclose linebreak $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
+    , cclose whitespace $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
+    , read (plus dot) (pushStr XMLDeclVersionStr)
     ]
 
 xmlSteps : Lex1 q XMLSz XMLSTCK
