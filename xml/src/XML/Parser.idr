@@ -187,11 +187,15 @@ xmlinit = T1.do
   , "XMLDeclStandaloneNLE"
   , "XMLDeclStandaloneWhitespaceE"
   , "XMLPostDeclStart"
-  , "XMLPostDeclNLE"
-  , "XMLPostDeclWhitespaceE"
+  , "XMLPostDeclMiscCommentNLE"
+  , "XMLPostDeclMiscCommentWhitespaceE"
   , "XMLPostDeclMiscCommentStrStart"
   , "XMLPostDeclMiscCommentStr"
   , "XMLPostDeclMiscCommentE"
+  , "XMLPostDeclMiscAfterProcessingInstructionTargetNLE"
+  , "XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE"
+  , "XMLPostDeclMiscAfterProcessingInstructionDataNLE"
+  , "XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE"
   , "XMLPostDeclMiscProcessingInstructionTargetStrStart"
   , "XMLPostDeclMiscProcessingInstructionTargetStr"
   , "XMLPostDeclMiscProcessingInstructionTargetE"
@@ -334,10 +338,22 @@ onXMLPostDeclMiscProcessingInstructionDataStrEnd : (x : XMLSTCK) => XMLMiscValue
 onXMLPostDeclMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLMiscProcessingInstructionDataE
 
 onXMLPostDeclMiscCommentNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscCommentNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclNLE
+onXMLPostDeclMiscCommentNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscCommentNLE
 
 onXMLPostDeclMiscCommentWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscCommentWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclWhitespaceE
+onXMLPostDeclMiscCommentWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscCommentWhitespaceE
+
+onXMLPostDeclMiscProcessingInstructionNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclMiscProcessingInstructionNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscProcessingInstructionNLE
+
+onXMLPostDeclMiscProcessingInstructionWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclMiscProcessingInstructionWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscProcessingInstructionWhitespaceE
+
+onXMLPostDeclMiscAfterProcessingInstructionTargetNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclMiscAfterProcessingInstructionTargetNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscAfterProcessingInstructionTargetNLE
+
+onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
 
 onXMLDocTypeBeforeNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeBeforeNameNLE
@@ -381,6 +397,10 @@ onXMLDoctypeAfterPublicSystemIDNL v = incline 1 >> push1 x.xmldoctype (XMLDocTyp
 onXMLDocTypeAfterPublicSystemIDWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeAfterPublicSystemIDWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterPublicSystemIDWhitespaceE
 
+--------------------------------------------------------------------------------
+--          State Transition (EOI)
+--------------------------------------------------------------------------------
+
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
 onEOI = T1.do
   incline 1
@@ -391,7 +411,7 @@ onEOI = T1.do
   pure (Right XMLComplete)
 
 --------------------------------------------------------------------------------
---          State Transitions (dfa)
+--          State Transitions (DFA)
 --------------------------------------------------------------------------------
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
@@ -445,6 +465,14 @@ xmlPostDeclMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionTargetStr =
   dfa
     [ conv (plus $ dot && not linebreak && not whitespace) (onXMLPostDeclProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
+    ]
+
+xmlPostDeclMiscProcessingInstructionTargetAfter : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionTargetAfter =
+  dfa
+    [ conv linebreak (\bs => onXMLPostDeclMiscAfterProcessingInstructionTargetNL bs)
+    , conv whitespace (\bs => onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace bs)
+
     ]
 
 xmlPostDeclMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
@@ -617,6 +645,7 @@ xmlPostDeclMiscProcessingInstructionTargetAfter =
   dfa
     [ conv linebreak (\bs => onXMLPostDeclNL bs)
     , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
+    , conv (plus $ dot && not linebreak && not whitespace && not "?>") (onXMLPostDeclProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
     , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
     ]
 
@@ -651,6 +680,10 @@ xmlDocTypePublicPublicIDAfter =
     , conv whitespace (\bs => onXMLDocTypeAfterPublicPublicIDWhitespace bs)
     ]
 
+--------------------------------------------------------------------------------
+--          Parsers
+--------------------------------------------------------------------------------
+
 xmlSteps : Lex1 q XMLSz XMLSTCK
 xmlSteps =
   lex1
@@ -672,9 +705,19 @@ xmlSteps =
     , E XMLDeclStandaloneE xmlDeclStandaloneAfter
     , E XMLPostDeclStart xmlPostDeclStart
     , E XMLMiscCommentStrStart xmlPostDeclMiscCommentStr
-    , E 
+    , E XMLMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
+    , E XMLPostDeclMiscCommentNLE xmlPostDeclStart
+    , E XMLPostDeclMiscCommentWhiteSpaceE xmlPostDeclStart
+    , E XMLPostDeclMiscProcessingInstructionNLE xmlPostDeclStart
+    , E XMLPostDeclMiscProcessingInstructionWhitespaceE xmlPostDeclStart
+    , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE
+    , E XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
     , E XMLMiscProcessingInstructionTargetStrStart xmlPostDeclMiscProcessingInstructionTargetStr
     ]
+
+--------------------------------------------------------------------------------
+--          EOI
+--------------------------------------------------------------------------------
 
 xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
 xmlEOI st x =
