@@ -20,16 +20,6 @@ import public Text.ILex
 %language ElabReflection
 
 --------------------------------------------------------------------------------
---          RExp
---------------------------------------------------------------------------------
-
-whitespace : RExp True
-whitespace = ' ' <|> '\t'
-
-linebreak : RExp True
-linebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
-
---------------------------------------------------------------------------------
 --          XMLMiscValue
 --------------------------------------------------------------------------------
 
@@ -52,6 +42,28 @@ data XMLDeclValue : Type where
   XMLDeclStandalone : Bool -> XMLDeclValue
   XMLDeclNL         : ByteString -> XMLDeclValue
   XMLDeclWhitespace : ByteString -> XMLDeclValue
+
+--------------------------------------------------------------------------------
+--          XMLDeclValue - RExp
+--------------------------------------------------------------------------------
+
+xmldeclwhitespace : RExp True
+xmldeclwhitespace = ' ' <|> '\t'
+
+xmldecllinebreak : RExp True
+xmldecllinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
+
+xmldeclversion : RExp True
+xmldeclverion = '1' >> '.' >> plus dot
+
+xmldeclversion : RExp True
+xmldeclverion = '1' >> '.' >> dot
+
+xmldeclencoding : RExp True
+xmldeclencoding = plus dot
+
+xmldeclstandalone : RExp True
+xmldeclstandalone = str "yes" <|> str "no"
 
 --------------------------------------------------------------------------------
 --          XMLDocTypeValue
