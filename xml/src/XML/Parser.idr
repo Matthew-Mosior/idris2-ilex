@@ -626,7 +626,9 @@ xmlDocTypePublicPublicIDAfter =
 xmlSteps : Lex1 q XMLSz XMLSTCK
 xmlSteps =
   lex1
-    [ E XMLIni xmlInit
+    [ -- Initial state
+      E XMLIni xmlInit
+      -- XML declaration - optional
     , E XMLDeclVersionS xmlDeclVersionS
     , E XMLDeclVersionStrStart xmlDecVersionStr
     , E XMLDeclVersionNLE xmlDeclVersionAfter
@@ -642,6 +644,7 @@ xmlSteps =
     , E XMLDeclStandaloneNLE xmlDeclStandaloneAfter
     , E XMLDeclStandaloneWhitespaceE xmlDeclStandaloneAfter
     , E XMLDeclStandaloneE xmlDeclStandaloneAfter
+      -- After XML declaration - optional (comments and processing instructions)
     , E XMLPostDeclStart xmlPostDeclStart
     , E XMLMiscCommentStrStart xmlPostDeclMiscCommentStr
     , E XMLPostDeclMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
