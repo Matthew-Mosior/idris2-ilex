@@ -32,6 +32,19 @@ data XMLMiscValue : Type where
   XMLMiscWhitespace                  : ByteString -> XMLDeclValue
 
 --------------------------------------------------------------------------------
+--          XMLMiscValue - RExp
+--------------------------------------------------------------------------------
+
+xmlmisccomment : RExp True
+xmlmisccomment = plus $ dot && not (str "--")
+
+xmlmiscprocessinginstructiontarget : RExp True
+xmlmiscprocessinginstructiontarget = plus $ alpha && not '_' && not ':'
+
+xmlmiscprocessinginstructiondata : RExp True
+xmlmiscprocessinginstructiondata = plus $ '<' <|> '>' <|> '&' <|> '"' <|> '\n' <|> range32 0x20 0x10ffff
+
+--------------------------------------------------------------------------------
 --          XMLDeclValue
 --------------------------------------------------------------------------------
 
