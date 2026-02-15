@@ -67,13 +67,10 @@ xmldecllinebreak : RExp True
 xmldecllinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 xmldeclversion : RExp True
-xmldeclverion = '1' >> '.' >> plus dot
-
-xmldeclversion : RExp True
-xmldeclverion = '1' >> '.' >> dot
+xmldeclverion = str "1.0"
 
 xmldeclencoding : RExp True
-xmldeclencoding = plus dot
+xmldeclencoding = str "UTF-8"
 
 xmldeclstandalone : RExp True
 xmldeclstandalone = str "yes" <|> str "no"
