@@ -24,7 +24,7 @@ import public Text.ILex
 --------------------------------------------------------------------------------
 
 whitespace : RExp True
-whitespace = ' '
+whitespace = ' ' <|> '\t'
 
 linebreak : RExp True
 linebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
@@ -434,7 +434,7 @@ onEOI = T1.do
   pure (Right XMLComplete)
 
 --------------------------------------------------------------------------------
---          State Transitions (DFA)
+--          State Transitions (Strings/ByteStrings)
 --------------------------------------------------------------------------------
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
@@ -517,7 +517,7 @@ xmlDocTypePublicSystemIDStr =
     ]
 
 --------------------------------------------------------------------------------
---          State Transitions (main)
+--          State Transitions (Non Strings/ByteStrings)
 --------------------------------------------------------------------------------
 
 xmlInit : DFA q XMLSz XMLSTCK
