@@ -39,7 +39,7 @@ xmlmisccomment : RExp True
 xmlmisccomment = plus $ dot && not (str "--")
 
 xmlmiscprocessinginstructiontarget : RExp True
-xmlmiscprocessinginstructiontarget = plus $ alpha && not '_' && not ':'
+xmlmiscprocessinginstructiontarget = plus $ alpha <|> '_' <|> ':'
 
 xmlmiscprocessinginstructiondata : RExp True
 xmlmiscprocessinginstructiondata = plus $ '<' <|> '>' <|> '&' <|> '"' <|> '\n' <|> range32 0x20 0x10ffff
@@ -87,6 +87,22 @@ data XMLDocTypeValue : Type where
   XMLDocTypePublicSystemID : ByteString -> XMLDocTypeValue
   XMLDocTypeNL             : ByteString -> XMLDocTypeValue
   XMLDocTypeWhitespace     : ByteString -> XMLDocTypeValue
+
+--------------------------------------------------------------------------------
+--          XMLDocTypeValue - RExp
+--------------------------------------------------------------------------------
+
+xmldoctypename : RExp True
+xmldoctypename = plus $ alpha <|> '_' <|> ':'
+
+xmldoctypesystem : RExp True
+xmldoctypesystem = plus $ dot && not '"'
+
+xmldoctypepublicpublicid : RExp True
+xmldoctypepublicpublicid = plus $ dot && not '"'
+
+xmldoctypepublicsystemid : RExp True
+xmldoctypepublicsystemid = plus $ dot && not '"'
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
