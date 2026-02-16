@@ -128,7 +128,7 @@ data XMLDocTypeValue : Type where
 --------------------------------------------------------------------------------
 
 xmldoctypename : RExp True
-xmldoctypename = (alpha <|> '_' <|> ':') >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden) 
+xmldoctypename = (alpha <|> '_' <|> ':') >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmldoctypesystem : RExp True
 xmldoctypesystem = plus $ dot && not '"' && not forbidden
@@ -162,13 +162,13 @@ data XMLElementValue : Type where
 --------------------------------------------------------------------------------
 
 xmlelementemptytag : RExp True
-xmlelementemptytag = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
+xmlelementemptytag = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmlelementstarttagname : RExp True
-xmlelementstarttagname = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
+xmlelementstarttagname = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmlelementstarttagattributename : RExp True
-xmlelementstarttagattributename = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
+xmlelementstarttagattributename = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmlelementstarttagattributevalue : RExp True
 xmlelementstarttagattributevalue = plus $ dot && not '<' && not '&' && not forbidden
@@ -177,7 +177,7 @@ xmlelementchardata : RExp True
 xmlelementchardata = plus $ dot && not '<' && not '&' && not (str "]]>") && not forbidden
 
 xmlelementcdata : RExp True
-xmlelementcdata = plus $ dot && not (str "]]>") && not forbidden 
+xmlelementcdata = plus $ dot && not (str "]]>") && not forbidden
 
 --------------------------------------------------------------------------------
 --          XMLDocument
@@ -259,9 +259,11 @@ xmlinit = T1.do
 --------------------------------------------------------------------------------
 
 %runElab deriveParserState "XMLSz" "XMLST"
-  [ "XMLIni"
+  [ -- initial state
+    "XMLIni"
+    -- empty state
   , "XMLEmpty"
-  , "XMLComplete"
+    -- declaration parser states
   , "XMLDeclVersionS"
   , "XMLDeclVersionStrStart"
   , "XMLDeclVersionStr"
@@ -281,6 +283,7 @@ xmlinit = T1.do
   , "XMLDeclStandaloneE"
   , "XMLDeclStandaloneNLE"
   , "XMLDeclStandaloneWhitespaceE"
+  -- post declaration misc parser states
   , "XMLPostDeclStart"
   , "XMLPostDeclMiscCommentNLE"
   , "XMLPostDeclMiscCommentWhitespaceE"
@@ -298,6 +301,7 @@ xmlinit = T1.do
   , "XMLPostDeclMiscProcessingInstructionDataStr"
   , "XMLPostDeclMiscProcessingInstructionDataE"
   , "XMLPostDeclMiscProcessingInstructionE"
+  -- doctype parser states
   , "XMLDocTypeNameS"
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
@@ -323,6 +327,7 @@ xmlinit = T1.do
   , "XMLDocTypeAfterPublicPublicIDWhitespaceE"
   , "XMLDocTypeAfterPublicSystemIDNLE"
   , "XMLDocTypeAfterPublicSystemIDWhitespaceE"
+  -- post doctype misc parser states
   , "XMLPostDocTypeMiscCommentNLE"
   , "XMLPostDocTypeMiscCommentWhitespaceE"
   , "XMLPostDocTypeMiscCommentStrStart"
@@ -339,6 +344,7 @@ xmlinit = T1.do
   , "XMLPostDocTypeMiscProcessingInstructionDataStr"
   , "XMLPostDocTypeMiscProcessingInstructionDataE"
   , "XMLPostDocTypeMiscProcessingInstructionE"
+  -- root element parser states
   , "XMLElementEmptyTagS"
   , "XMLElementEmptyTagStrStart"
   , "XMLElementEmptyTagStr"
@@ -385,6 +391,7 @@ xmlinit = T1.do
   , "XMLElementEndTagStrStart"
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
+  -- post root element misc parser states
   , "XMLPostElementMiscCommentNLE"
   , "XMLPostElementMiscCommentWhitespaceE"
   , "XMLPostElementMiscCommentStrStart"
@@ -401,7 +408,8 @@ xmlinit = T1.do
   , "XMLPostElementMiscProcessingInstructionDataStr"
   , "XMLPostElementMiscProcessingInstructionDataE"
   , "XMLPostElementMiscProcessingInstructionE"
-  , "XMLFinished"
+    -- terminal state
+  , "XMLDone"
   ]
 
 --------------------------------------------------------------------------------
