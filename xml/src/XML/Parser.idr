@@ -127,7 +127,17 @@ data XMLElementValue : Type where
 --------------------------------------------------------------------------------
 
 xmlelementemptytag : RExp True
-xmlelementemptytag = ('_' <|> ':' <|> range32 0x20 0x10ffff)
+xmlelementemptytag = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':')
+
+xmlelementstarttagname : RExp True
+xmlelementstarttagname = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':')
+
+xmlelementstarttagattributename : RExp True
+xmlelementstarttagattributename = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':')
+
+xmlelementstarttagattributevalue : RExp True
+xmlelementstarttagattributevalue = plus $ dot && not '<' && not '&'
+
 
 --------------------------------------------------------------------------------
 --          XMLDocument
