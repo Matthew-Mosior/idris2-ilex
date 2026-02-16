@@ -138,6 +138,11 @@ xmlelementstarttagattributename = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (pl
 xmlelementstarttagattributevalue : RExp True
 xmlelementstarttagattributevalue = plus $ dot && not '<' && not '&'
 
+xmlelementchardata : RExp True
+xmlelementchardata = plus $ dot && not '<' && not '&' && not (str "]]>")
+
+xmlelementcdata : RExp True
+xmlelementcdata = plus $ dot && not (str "]]>")
 
 --------------------------------------------------------------------------------
 --          XMLDocument
