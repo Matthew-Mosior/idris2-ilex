@@ -71,13 +71,13 @@ data XMLMiscValue : Type where
 --------------------------------------------------------------------------------
 
 xmlmisccomment : RExp True
-xmlmisccomment = plus $ dot && not (str "--")
+xmlmisccomment = plus $ dot && not (str "--") && not forbidden
 
 xmlmiscprocessinginstructiontarget : RExp True
 xmlmiscprocessinginstructiontarget = plus $ alpha <|> '_' <|> ':'
 
 xmlmiscprocessinginstructiondata : RExp True
-xmlmiscprocessinginstructiondata = plus $ '<' <|> '>' <|> '&' <|> '"' <|> '\n' <|> range32 0x20 0x10ffff
+xmlmiscprocessinginstructiondata = plus $ oneOf ['<', '>', '&', '"', '\n'] && not forbidden
 
 --------------------------------------------------------------------------------
 --          XMLDeclValue
@@ -128,16 +128,16 @@ data XMLDocTypeValue : Type where
 --------------------------------------------------------------------------------
 
 xmldoctypename : RExp True
-xmldoctypename = plus $ alpha <|> '_' <|> ':'
+xmldoctypename = (alpha <|> '_' <|> ':') >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden) 
 
 xmldoctypesystem : RExp True
-xmldoctypesystem = plus $ dot && not '"'
+xmldoctypesystem = plus $ dot && not '"' && not forbidden
 
 xmldoctypepublicpublicid : RExp True
-xmldoctypepublicpublicid = plus $ dot && not '"'
+xmldoctypepublicpublicid = plus $ dot && not '"' && not forbidden
 
 xmldoctypepublicsystemid : RExp True
-xmldoctypepublicsystemid = plus $ dot && not '"'
+xmldoctypepublicsystemid = plus $ dot && not '"' && not forbidden
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
@@ -162,22 +162,22 @@ data XMLElementValue : Type where
 --------------------------------------------------------------------------------
 
 xmlelementemptytag : RExp True
-xmlelementemptytag = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':')
+xmlelementemptytag = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmlelementstarttagname : RExp True
-xmlelementstarttagname = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':')
+xmlelementstarttagname = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmlelementstarttagattributename : RExp True
-xmlelementstarttagattributename = ('_' <|> ':' <|> range32 0x20 0x10ffff) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':')
+xmlelementstarttagattributename = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphanNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
 
 xmlelementstarttagattributevalue : RExp True
-xmlelementstarttagattributevalue = plus $ dot && not '<' && not '&'
+xmlelementstarttagattributevalue = plus $ dot && not '<' && not '&' && not forbidden
 
 xmlelementchardata : RExp True
-xmlelementchardata = plus $ dot && not '<' && not '&' && not (str "]]>")
+xmlelementchardata = plus $ dot && not '<' && not '&' && not (str "]]>") && not forbidden
 
 xmlelementcdata : RExp True
-xmlelementcdata = plus $ dot && not (str "]]>")
+xmlelementcdata = plus $ dot && not (str "]]>") && not forbidden 
 
 --------------------------------------------------------------------------------
 --          XMLDocument
