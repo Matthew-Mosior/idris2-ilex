@@ -71,7 +71,7 @@ data XMLMiscValue : Type where
 --------------------------------------------------------------------------------
 
 xmlmisccomment : RExp True
-xmlmisccomment = plus $ dot && not (str "--") && not forbidden
+xmlmisccomment = plus $ dot && not (str "--") && not forbidden >> star $ dot && not forbidden && not '-'
 
 xmlmiscprocessinginstructiontarget : RExp True
 xmlmiscprocessinginstructiontarget = plus $ alpha <|> '_' <|> ':'
