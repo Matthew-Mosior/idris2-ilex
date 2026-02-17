@@ -611,7 +611,7 @@ xmlDocTypePublicSystemIDStr =
     ]
 
 --------------------------------------------------------------------------------
---          State Transition (EOI)
+--          State Transition - EOI
 --------------------------------------------------------------------------------
 
 onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
@@ -638,7 +638,7 @@ xmlInit =
     ]
 
 --------------------------------------------------------------------------------
---          DFA - after declaration version 
+--          DFA - after declaration version
 --------------------------------------------------------------------------------
 
 xmlDeclVersionAfter : DFA q XMLSz XMLSTCK
