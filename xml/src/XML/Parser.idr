@@ -424,7 +424,7 @@ xmlErr =
     ]
 
 --------------------------------------------------------------------------------
---          State Transitions (newlines/whitespace and strings)
+--          State Transitions and DFAs - declaration
 --------------------------------------------------------------------------------
 
 onXMLDeclPostVersionNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
@@ -454,6 +454,49 @@ onXMLDeclEncodingStrEnd v = push1 x.xmldecl v >> pure XMLDeclEncodingE
 onXMLDeclStandaloneStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
 onXMLDeclStandaloneStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
 
+xmlDeclVersionS : DFA q XMLSz XMLSTCK
+xmlDeclVersionS =
+  dfa
+    [ copen '"' (pure XMLDeclVersionStrStart)
+    ]
+
+xmlDeclVersionStr : DFA q XMLSz XMLSTCK
+xmlDeclVersionStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
+    , read (plus $ dot && not '"') (pushStr XMLDeclVersionStr)
+    ]
+
+xmlDeclEncodingS : DFA q XMLSz XMLSTCK
+xmlDeclEncodingS =
+  dfa
+    [ copen '"' (pure XMLDeclEncodingStrStart)
+    ]
+
+xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
+xmlDeclEncodingStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDeclEncodingStrEnd . XMLDeclEncoding
+    , read (plus $ dot && not '"') (pushStr XMLDeclEncodingStr)
+    ]
+
+xmlDeclStandaloneS : DFA q XMLSz XMLSTCK
+xmlDeclStandaloneS =
+  dfa
+    [ copen '"' (pure XMLDeclStandaloneStrStart)
+    ]
+
+xmlDeclStandaloneStr : DFA q XMLSz XMLSTCK
+xmlDeclStandaloneStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDeclStandaloneStrEnd . XMLDeclStandalone
+    , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
+    ]
+
+--------------------------------------------------------------------------------
+--          State Transitions and DFAs - post declaration misc
+--------------------------------------------------------------------------------
+
 onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
 
@@ -480,6 +523,18 @@ onXMLPostDeclMiscAfterProcessingInstructionDataNL v = incline 1 >> push1 x.xmlpo
 
 onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
+
+xmlPostDeclMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscCommentStr =
+  dfa
+    [ conv linebreak (\bs => onXMLPostDeclMiscCommentNL bs)
+    , conv whitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
+    , conv (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
+    ]
+
+--------------------------------------------------------------------------------
+--          State Transitions and DFAs - documentation type declaration
+--------------------------------------------------------------------------------
 
 onXMLDocTypeBeforeNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeBeforeNameNLE
@@ -523,70 +578,6 @@ onXMLDoctypeAfterPublicSystemIDNL v = incline 1 >> push1 x.xmldoctype (XMLDocTyp
 onXMLDocTypeAfterPublicSystemIDWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
 onXMLDoctypeAfterPublicSystemIDWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterPublicSystemIDWhitespaceE
 
---------------------------------------------------------------------------------
---          State Transition (EOI)
---------------------------------------------------------------------------------
-
-onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
-onEOI = T1.do
-  incline 1
-  xmlvs@(_::_) <- getList x.xmlvalues
-    | [] => arrFail XMLSTCK xmlErr XMLEmpty x
-  ln <- read1 x.line
-  push1 x.xmldoc (MkXMLValues ln xmlvs)
-  pure (Right XMLComplete)
-
---------------------------------------------------------------------------------
---          State Transitions (Strings/ByteStrings)
---------------------------------------------------------------------------------
-
-xmlDeclVersionS : DFA q XMLSz XMLSTCK
-xmlDeclVersionS =
-  dfa
-    [ copen '"' (pure XMLDeclVersionStrStart)
-    ]
-
-xmlDeclVersionStr : DFA q XMLSz XMLSTCK
-xmlDeclVersionStr =
-  dfa
-    [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
-    , read (plus $ dot && not '"') (pushStr XMLDeclVersionStr)
-    ]
-
-xmlDeclEncodingS : DFA q XMLSz XMLSTCK
-xmlDeclEncodingS =
-  dfa
-    [ copen '"' (pure XMLDeclEncodingStrStart)
-    ]
-
-xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
-xmlDeclEncodingStr =
-  dfa
-    [ cclose '"' $ getStr >>= onXMLDeclEncodingStrEnd . XMLDeclEncoding
-    , read (plus $ dot && not '"') (pushStr XMLDeclEncodingStr)
-    ]
-
-xmlDeclStandaloneS : DFA q XMLSz XMLSTCK
-xmlDeclStandaloneS =
-  dfa
-    [ copen '"' (pure XMLDeclStandaloneStrStart)
-    ]
-
-xmlDeclStandaloneStr : DFA q XMLSz XMLSTCK
-xmlDeclStandaloneStr =
-  dfa
-    [ cclose '"' $ getStr >>= onXMLDeclStandaloneStrEnd . XMLDeclStandalone
-    , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
-    ]
-
-xmlPostDeclMiscCommentStr : DFA q XMLSz XMLSTCK
-xmlPostDeclMiscCommentStr =
-  dfa
-    [ conv linebreak (\bs => onXMLPostDeclMiscCommentNL bs)
-    , conv whitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
-    , conv (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
-    ]
-
 xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
 xmlDocTypeNameStr =
   dfa
@@ -620,7 +611,20 @@ xmlDocTypePublicSystemIDStr =
     ]
 
 --------------------------------------------------------------------------------
---          State Transitions (Non Strings/ByteStrings)
+--          State Transition (EOI)
+--------------------------------------------------------------------------------
+
+onEOI : (x : FSTCK q) => F1 q (Either (BoundedErr Void) FST)
+onEOI = T1.do
+  incline 1
+  xmlvs@(_::_) <- getList x.xmlvalues
+    | [] => arrFail XMLSTCK xmlErr XMLEmpty x
+  ln <- read1 x.line
+  push1 x.xmldoc (MkXMLValues ln xmlvs)
+  pure (Right XMLDone)
+
+--------------------------------------------------------------------------------
+--          DFA - initial
 --------------------------------------------------------------------------------
 
 xmlInit : DFA q XMLSz XMLSTCK
@@ -633,6 +637,10 @@ xmlInit =
     , conv '<' (pure XMLElementStartTagNameS)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after declaration version 
+--------------------------------------------------------------------------------
+
 xmlDeclVersionAfter : DFA q XMLSz XMLSTCK
 xmlDeclVersionAfter =
   dfa
@@ -643,6 +651,10 @@ xmlDeclVersionAfter =
     , read (str "?>") (pure XMLPostDeclStart)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after declaration encoding
+--------------------------------------------------------------------------------
+
 xmlDeclEncodingAfter : DFA q XMLSz XMLSTCK
 xmlDeclEncodingAfter =
   dfa
@@ -652,6 +664,10 @@ xmlDeclEncodingAfter =
     , read (str "?>") (pure XMLPostDeclStart)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after declaration standalone
+--------------------------------------------------------------------------------
+
 xmlDeclStandaloneAfter : DFA q XMLSz XMLSTCK
 xmlDeclStandaloneAfter =
   dfa
@@ -659,6 +675,10 @@ xmlDeclStandaloneAfter =
     , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
     , read (str "?>") (pure XMLPostDeclStart)
     ]
+
+--------------------------------------------------------------------------------
+--          DFA - start of post declaration
+--------------------------------------------------------------------------------
 
 xmlPostDeclStart : DFA q XMLSz XMLSTCK
 xmlPostDeclStart =
@@ -671,6 +691,10 @@ xmlPostDeclStart =
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after post declaration comment
+--------------------------------------------------------------------------------
+
 xmlPostDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscCommentAfter =
   dfa
@@ -682,6 +706,10 @@ xmlPostDeclMiscCommentAfter =
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after post declaration processing instruction target
+--------------------------------------------------------------------------------
+
 xmlPostDeclMiscProcessingInstructionTargetAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionTargetAfter =
   dfa
@@ -691,6 +719,10 @@ xmlPostDeclMiscProcessingInstructionTargetAfter =
     , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after post declaration processing instruction data
+--------------------------------------------------------------------------------
+
 xmlPostDeclMiscProcessingInstructionDataAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionDataAfter =
   dfa
@@ -698,6 +730,10 @@ xmlPostDeclMiscProcessingInstructionDataAfter =
     , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
     , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
     ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype name
+--------------------------------------------------------------------------------
 
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeNameAfter =
@@ -707,6 +743,10 @@ xmlDocTypeNameAfter =
     , read '>' (pure XMLDocTypeFinished)
     ]
 
+--------------------------------------------------------------------------------
+--          DFA - after doctype system uri
+--------------------------------------------------------------------------------
+
 xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeSystemURIAfter =
   dfa
@@ -714,6 +754,10 @@ xmlDocTypeSystemURIAfter =
     , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
     , read '>' (pure XMLDocTypeFinished)
     ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype public public id
+--------------------------------------------------------------------------------
 
 xmlDocTypePublicPublicIDAfter : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDAfter =
