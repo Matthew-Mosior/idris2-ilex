@@ -74,7 +74,7 @@ xmlmisccomment : RExp True
 xmlmisccomment = (star $ dot && not '-' && not forbidden) || ('-' >> (star $ dot && not '-' && not forbidden))
 
 xmlmiscprocessinginstructiontarget : RExp True
-xmlmiscprocessinginstructiontarget = plus $ alpha <|> '_' <|> ':'
+xmlmiscprocessinginstructiontarget = (alpha <|> '_' <|> ':') >> (alpha <|> '-' <|> ':' <|> '.')
 
 xmlmiscprocessinginstructiondata : RExp True
 xmlmiscprocessinginstructiondata = plus $ oneOf ['<', '>', '&', '"', '\n'] && not forbidden
