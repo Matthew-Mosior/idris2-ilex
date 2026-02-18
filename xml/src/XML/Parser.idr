@@ -4,7 +4,6 @@ import Data.Bits
 import Data.Buffer
 import Data.ByteString
 import Data.Linear.Ref1
-import Data.SortedMap
 import Data.String
 import Derive.Prelude
 import FS.Posix
