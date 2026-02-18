@@ -161,10 +161,13 @@ data XMLElementValue : Type where
 --------------------------------------------------------------------------------
 
 xmlelementemptytag : RExp True
-xmlelementemptytag = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
+xmlelementemptytag = (dot && not digit && not '-' && not '.' && not (str "xml")) >> (star $ alphaNum <|> '_' <|> '-' <|> '.' <|> not forbidden)
 
 xmlelementstarttagname : RExp True
-xmlelementstarttagname = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
+xmlelementstarttagname = (dot && not digit && not '-' && not '.' && not (str "xml")) >> (star $ alphaNum <|> '_' <|> '-' <|> '.' <|> not forbidden)
+
+xmlelementendtagname : RExp True
+xmlelementendtagname = (dot && not digit && not '-' && not '.' && not (str "xml")) >> (star $ alphaNum <|> '_' <|> '-' <|> '.' <|> not forbidden)
 
 xmlelementstarttagattributename : RExp True
 xmlelementstarttagattributename = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
