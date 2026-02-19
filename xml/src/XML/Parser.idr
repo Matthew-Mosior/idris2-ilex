@@ -94,16 +94,16 @@ data XMLDocTypeValue : Type where
 --------------------------------------------------------------------------------
 
 xmldoctypename : RExp True
-xmldoctypename = plus namechar 
+xmldoctypename = namestartchar >> star namechar 
 
 xmldoctypesystem : RExp True
-xmldoctypesystem = plus $ dot && not '"' && not forbidden
+xmldoctypesystem = star $ dot && not '"' && not forbidden
 
 xmldoctypepublicpublicid : RExp True
-xmldoctypepublicpublicid = plus $ dot && not '"' && not forbidden
+xmldoctypepublicpublicid = star $ pubidchar
 
 xmldoctypepublicsystemid : RExp True
-xmldoctypepublicsystemid = plus $ dot && not '"' && not forbidden
+xmldoctypepublicsystemid = star $ dot && not '"' && not forbidden
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
