@@ -7,5 +7,5 @@ depends   = ilex
 brief     = "Stack-safe and efficient parser for the Extensible Markup Language (XML) 1.0."
 
 modules   = XML.Parser
-          , XML.Parser.RExp
+          , XML.RExp
           , XML.Show
