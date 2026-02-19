@@ -68,7 +68,7 @@ xmldecllinebreak : RExp True
 xmldecllinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 xmldeclversion : RExp True
-xmldeclverion = str "1.0"
+xmldeclversion = str "1.0"
 
 xmldeclencoding : RExp True
 xmldeclencoding = str "UTF-8"
@@ -426,8 +426,13 @@ onXMLDeclVersionStrEnd v = push1 x.xmldecl v >> pure XMLDeclVersionE
 onXMLDeclEncodingStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
 onXMLDeclEncodingStrEnd v = push1 x.xmldecl v >> pure XMLDeclEncodingE
 
-onXMLDeclStandaloneStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
-onXMLDeclStandaloneStrEnd v = push1 x.xmldecl v >> pure XMLDeclStandaloneE
+onXMLDeclStandaloneStrEnd : (x : XMLSTCK) => String -> F1 q XMLST
+onXMLDeclStandaloneStrEnd s =
+  case s of
+    "yes" => T1.do
+      push1 x.xmldecl (XMLDeclStandalone True) >> pure XMLDeclStandaloneE
+    _ => T1.do
+      push1 x.xmldecl (XMLDeclStandalone False) >> pure XMLDeclStandaloneE
 
 xmlDeclVersionS : DFA q XMLSz XMLSTCK
 xmlDeclVersionS =
@@ -439,7 +444,7 @@ xmlDeclVersionStr : DFA q XMLSz XMLSTCK
 xmlDeclVersionStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDeclVersionStrEnd . XMLDeclVersion
-    , read (plus $ dot && not '"') (pushStr XMLDeclVersionStr)
+    , read xmldeclversion (pushStr XMLDeclVersionStr)
     ]
 
 xmlDeclEncodingS : DFA q XMLSz XMLSTCK
@@ -452,7 +457,7 @@ xmlDeclEncodingStr : DFA q XMLSz XMLSTCK
 xmlDeclEncodingStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDeclEncodingStrEnd . XMLDeclEncoding
-    , read (plus $ dot && not '"') (pushStr XMLDeclEncodingStr)
+    , read xmldeclencoding (pushStr XMLDeclEncodingStr)
     ]
 
 xmlDeclStandaloneS : DFA q XMLSz XMLSTCK
@@ -464,8 +469,8 @@ xmlDeclStandaloneS =
 xmlDeclStandaloneStr : DFA q XMLSz XMLSTCK
 xmlDeclStandaloneStr =
   dfa
-    [ cclose '"' $ getStr >>= onXMLDeclStandaloneStrEnd . XMLDeclStandalone
-    , read (plus $ dot && not '"') (pushStr XMLDeclStandaloneStr)
+    [ cclose '"' $ getStr >>= (\str => onXMLDeclStandaloneStrEnd str)
+    , read xmldeclstandalone (pushStr XMLDeclStandaloneStr)
     ]
 
 --------------------------------------------------------------------------------
