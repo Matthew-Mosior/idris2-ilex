@@ -127,26 +127,32 @@ data XMLElementValue : Type where
 --          XMLElementValue - RExp
 --------------------------------------------------------------------------------
 
-xmlelementemptytag : RExp True
-xmlelementemptytag = (dot && not digit && not '-' && not '.' && not (str "xml")) >> (star $ alphaNum <|> '_' <|> '-' <|> '.' <|> not forbidden)
-
 xmlelementstarttagname : RExp True
-xmlelementstarttagname = (dot && not digit && not '-' && not '.' && not (str "xml")) >> (star $ alphaNum <|> '_' <|> '-' <|> '.' <|> not forbidden)
-
-xmlelementendtagname : RExp True
-xmlelementendtagname = (dot && not digit && not '-' && not '.' && not (str "xml")) >> (star $ alphaNum <|> '_' <|> '-' <|> '.' <|> not forbidden)
+xmlelementstarttagname = namestartchar >> star namechar
 
 xmlelementstarttagattributename : RExp True
-xmlelementstarttagattributename = (alpha <|> '_' <|> ':' <|> not forbidden) >> (plus $ alphaNum <|> '-' <|> '_' <|> '.' <|> ':' <|> not forbidden)
+xmlelementstarttagattributename = namestartchar >> star namechar
 
 xmlelementstarttagattributevalue : RExp True
-xmlelementstarttagattributevalue = plus $ dot && not '<' && not '&' && not forbidden
+xmlelementstarttagattributevalue = star $ dot && not '<' && not '&' && not forbidden
 
 xmlelementchardata : RExp True
 xmlelementchardata = plus $ dot && not '<' && not '&' && not (str "]]>") && not forbidden
 
 xmlelementcdata : RExp True
 xmlelementcdata = plus $ dot && not (str "]]>") && not forbidden
+
+xmlelementendtagname : RExp True
+xmlelementendtagname = namestartchar >> star namechar
+
+xmlelementemptytagname : RExp True
+xmlelementemptytagname  = namestartchar >> star namechar 
+
+xmlelementemptytagattributename : RExp True
+xmlelementemptytagattributename = namestartchar >> star namechar
+
+xmlelementemptytagattributevalue : RExp True
+xmlelementemptytagattributevalue = star $ dot && not '<' && not '&' && not forbidden
 
 --------------------------------------------------------------------------------
 --          XMLDocument
