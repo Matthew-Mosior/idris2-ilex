@@ -29,18 +29,11 @@ data XMLMiscValue : Type where
   XMLMiscComment                     : ByteString -> XMLMiscValue
   XMLMiscProcessingInstructionTarget : ByteString -> XMLMiscValue
   XMLMiscProcessingInstructionData   : ByteString -> XMLMiscValue
-  XMLMiscNL                          : ByteString -> XMLDeclValue
-  XMLMiscWhitespace                  : ByteString -> XMLDeclValue
+  XMLMiscWhitespace                  : ByteString -> XMLMiscValue
 
 --------------------------------------------------------------------------------
 --          XMLMiscValue - RExp
 --------------------------------------------------------------------------------
-
-xmlmiscwhitespace : RExp True
-xmlmiscwhitespace = ' ' <|> '\t'
-
-xmlmisclinebreak : RExp True
-xmlmisclinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 xmlmisccomment : RExp True
 xmlmisccomment = (plus $ char && not '-') || ('-' >> (plus $ char && not '-'))
@@ -60,18 +53,11 @@ data XMLDeclValue : Type where
   XMLDeclVersion    : String -> XMDeclLValue
   XMLDeclEncoding   : String -> XMLDeclValue
   XMLDeclStandalone : Bool -> XMLDeclValue
-  XMLDeclNL         : ByteString -> XMLDeclValue
   XMLDeclWhitespace : ByteString -> XMLDeclValue
 
 --------------------------------------------------------------------------------
 --          XMLDeclValue - RExp
 --------------------------------------------------------------------------------
-
-xmldeclwhitespace : RExp True
-xmldeclwhitespace = ' ' <|> '\t'
-
-xmldecllinebreak : RExp True
-xmldecllinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 xmldeclversion : RExp True
 xmldeclversion = str "1.0"
@@ -83,6 +69,14 @@ xmldeclstandalone : RExp True
 xmldeclstandalone = str "yes" <|> str "no"
 
 --------------------------------------------------------------------------------
+--          XMLPostDeclWhitespaceValue
+--------------------------------------------------------------------------------
+
+public export
+data XMLPostDeclWhitespaceValue : Type where
+  XMLPostDeclWhitespace : ByteString -> XMPostDeclWhitespaceValue
+
+--------------------------------------------------------------------------------
 --          XMLDocTypeValue
 --------------------------------------------------------------------------------
 
@@ -92,18 +86,11 @@ data XMLDocTypeValue : Type where
   XMLDocTypeSystem         : ByteString -> XMLDocTypeValue
   XMLDocTypePublicPublicID : ByteString -> XMLDocTypeValue
   XMLDocTypePublicSystemID : ByteString -> XMLDocTypeValue
-  XMLDocTypeNL             : ByteString -> XMLDocTypeValue
   XMLDocTypeWhitespace     : ByteString -> XMLDocTypeValue
 
 --------------------------------------------------------------------------------
 --          XMLDocTypeValue - RExp
 --------------------------------------------------------------------------------
-
-xmldoctypewhitespace : RExp True
-xmldoctypewhitespace = ' ' <|> '\t'
-
-xmldoctypelinebreak : RExp True
-xmldoctypelinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
 
 xmldoctypename : RExp True
 xmldoctypename = namestartchar >> star namechar
@@ -132,7 +119,7 @@ data XMLElementValue : Type where
   XMLElementCharData               : String -> XMLElementValue
   XMLElementMisc                   : XMLMiscValue -> XMLElementValue
   XMLElementCDATA                  : String -> XMLElementValue
-  XMLElementNL                     : ByteString -> XMLElementValue
+  XMLElementWhitespace             : ByteString -> XMLElementValue
   XMLElementNode                   : List XMLElementValue -> XMLElementValue
 
 --------------------------------------------------------------------------------
@@ -173,12 +160,13 @@ xmlelementemptytagattributevalue = star $ dot && not '<' && not '&' && not forbi
 public export
 record XMLDocument where
   constructor MkXMLDocument
-  decl            : Maybe (List XMLDeclValue)
-  postdeclmisc    : Maybe (List Misc)
-  doctype         : Maybe (List XMLDocTypeValue)
-  postdoctypemisc : Maybe (List Misc)
-  root            : List XMLElementValue
-  postrootmisc    : Maybe (List Misc)
+  decl               : Maybe (List XMLDeclValue)
+  postdeclwhitespace : Maybe (List XMLPostDeclWhitespaceValue)
+  postdeclmisc       : Maybe (List XMLMiscValue)
+  doctype            : Maybe (List XMLDocTypeValue)
+  postdoctypemisc    : Maybe (List XMLMiscValue)
+  root               : List XMLElementValue
+  postrootmisc       : Maybe (List XMLMiscValue)
 
 %runElab derive "XMLDocument" [Show,Eq]
 
@@ -191,19 +179,20 @@ Interpolation XMLDocument where interpolate = show
 public export
 record XMLSTCK (q : Type) where
   constructor XML
-  line               : Ref q Nat
-  col                : Ref q Nat
-  psns               : Ref q (SnocList Position)
-  strs               : Ref q (SnocList String)
-  err                : Ref q (Maybe $ BoundedErr Void)
-  xmlelementstack    : Ref q (SnocList (String, SnocList XMLElementValue))
-  xmldecl            : Ref q (SnocList XMLDeclValue)
-  xmlpostdeclmisc    : Ref q (SnocList XMLMiscValue)
-  xmldoctype         : Ref q (SnocList XMLDocTypeValue)
-  xmlpostdoctypemisc : Ref q (SnocList XMLMiscValue)
-  xmlrootelement     : Ref q (SnocList XMLElementValue)
-  xmlpostrootmisc    : Ref q (SnocList XMLMiscValue)
-  bytes              : Ref q ByteString
+  line                  : Ref q Nat
+  col                   : Ref q Nat
+  psns                  : Ref q (SnocList Position)
+  strs                  : Ref q (SnocList String)
+  err                   : Ref q (Maybe $ BoundedErr Void)
+  xmlelementstack       : Ref q (SnocList (String, SnocList XMLElementValue))
+  xmldecl               : Ref q (SnocList XMLDeclValue)
+  xmlpostdeclwhitespace : Ref q (SnocList XMLPostDeclWhitespaceValue)
+  xmlpostdeclmisc       : Ref q (SnocList XMLMiscValue)
+  xmldoctype            : Ref q (SnocList XMLDocTypeValue)
+  xmlpostdoctypemisc    : Ref q (SnocList XMLMiscValue)
+  xmlrootelement        : Ref q (SnocList XMLElementValue)
+  xmlpostrootmisc       : Ref q (SnocList XMLMiscValue)
+  bytes                 : Ref q ByteString
 
 export %inline
 HasPosition XMLSTCK where
@@ -255,31 +244,26 @@ xmlinit = T1.do
   , "XMLDeclVersionStrStart"
   , "XMLDeclVersionStr"
   , "XMLDeclVersionE"
-  , "XMLDeclVersionNLE"
   , "XMLDeclVersionWhitespaceE"
   , "XMLDeclEncodingS"
   , "XMLDeclEncodingStrStart"
   , "XMLDeclEncodingStr"
   , "XMLDeclEncodingE"
-  , "XMLDeclEncodingNLE"
   , "XMLDeclEncodingWhitespaceE"
   , "XMLDeclEncodingPostUnfinished"
   , "XMLDeclStandaloneS"
   , "XMLDeclStandaloneStrStart"
   , "XMLDeclStandaloneStr"
   , "XMLDeclStandaloneE"
-  , "XMLDeclStandaloneNLE"
   , "XMLDeclStandaloneWhitespaceE"
   -- post declaration misc parser states
   , "XMLPostDeclStart"
-  , "XMLPostDeclMiscCommentNLE"
+  , "XMLPostDeclWhitespaceE"
   , "XMLPostDeclMiscCommentWhitespaceE"
   , "XMLPostDeclMiscCommentStrStart"
   , "XMLPostDeclMiscCommentStr"
   , "XMLPostDeclMiscCommentE"
-  , "XMLPostDeclMiscAfterProcessingInstructionTargetNLE"
   , "XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE"
-  , "XMLPostDeclMiscAfterProcessingInstructionDataNLE"
   , "XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE"
   , "XMLPostDeclMiscProcessingInstructionTargetStrStart"
   , "XMLPostDeclMiscProcessingInstructionTargetStr"
@@ -304,25 +288,17 @@ xmlinit = T1.do
   , "XMLDocTypePublicSystemIDStrStart"
   , "XMLDocTypePublicSystemIDStr"
   , "XMLDocTypePublicSystemIDE"
-  , "XMLDocTypeBeforeNameNLE"
   , "XMLDocTypeBeforeNameWhitespaceE"
-  , "XMLDocTypeAfterNameNLE"
   , "XMLDocTypeAfterNameWhitespaceE"
-  , "XMLDocTypeAfterSystemURINLE"
   , "XMLDocTypeAfterSystemURIWhitespaceE"
-  , "XMLDocTypeAfterPublicPublicIDNLE"
   , "XMLDocTypeAfterPublicPublicIDWhitespaceE"
-  , "XMLDocTypeAfterPublicSystemIDNLE"
   , "XMLDocTypeAfterPublicSystemIDWhitespaceE"
   -- post doctype misc parser states
-  , "XMLPostDocTypeMiscCommentNLE"
   , "XMLPostDocTypeMiscCommentWhitespaceE"
   , "XMLPostDocTypeMiscCommentStrStart"
   , "XMLPostDocTypeMiscCommentStr"
   , "XMLPostDocTypelMiscCommentE"
-  , "XMLPostDocTypeMiscAfterProcessingInstructionTargetNLE"
   , "XMLPostDocTypeMiscAfterProcessingInstructionTargetWhitespaceE"
-  , "XMLPostDocTypeMiscAfterProcessingInstructionDataNLE"
   , "XMLPostDocTypeMiscAfterProcessingInstructionDataWhitespaceE"
   , "XMLPostDocTypeMiscProcessingInstructionTargetStrStart"
   , "XMLPostDocTypeMiscProcessingInstructionTargetStr"
@@ -379,14 +355,11 @@ xmlinit = T1.do
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
   -- post root element misc parser states
-  , "XMLPostElementMiscCommentNLE"
   , "XMLPostElementMiscCommentWhitespaceE"
   , "XMLPostElementMiscCommentStrStart"
   , "XMLPostElementMiscCommentStr"
   , "XMLPostElementMiscCommentE"
-  , "XMLPostElementMiscAfterProcessingInstructionTargetNLE"
   , "XMLPostElementMiscAfterProcessingInstructionTargetWhitespaceE"
-  , "XMLPostElementMiscAfterProcessingInstructionDataNLE"
   , "XMLPostElementMiscAfterProcessingInstructionDataWhitespaceE"
   , "XMLPostElementMiscProcessingInstructionTargetStrStart"
   , "XMLPostElementMiscProcessingInstructionTargetStr"
@@ -414,23 +387,14 @@ xmlErr =
 --          State Transitions and DFAs - declaration
 --------------------------------------------------------------------------------
 
-onXMLDeclPostVersionNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDeclPostVersionNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclVersionNLE
+onXMLDeclPostVersionWhitespace : (x : XMLSTCK q) => XMLDeclValue -> F1 q XMLST
+onXMLDeclPostVersionWhitespace v = push1 x.xmldecl v >> pure XMLDeclVersionWhitespaceE
 
-onXMLDeclPostVersionWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDeclPostVersionWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclVersionWhitespaceE
+onXMLDeclPostEncodingWhitespace : (x : XMLSTCK q) => XMLDeclValue -> F1 q XMLST
+onXMLDeclPostEncodingWhitespace v = push1 x.xmldecl v >> pure XMLDeclEncodingWhitespaceE
 
-onXMLDeclPostEncodingNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDeclPostEncodingNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclEncodingNLE
-
-onXMLDeclPostEncodingWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDeclPostEncodingWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclEncodingWhitespaceE
-
-onXMLDeclPostStandaloneNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDeclPostStandaloneNL v = incline 1 >> push1 x.xmldecl (XMLDeclNL v) >> pure XMLDeclStandaloneNLE
-
-onXMLDeclPostStandaloneWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDeclPostStandaloneWhitespace v = push1 x.xmldecl (XMLDeclWhitespace v) >> pure XMLDeclStandaloneWhitespaceE
+onXMLDeclPostStandaloneWhitespace : (x : XMLSTCK q) => XMLDeclValue -> F1 q XMLST
+onXMLDeclPostStandaloneWhitespace v = push1 x.xmldecl v >> pure XMLDeclStandaloneWhitespaceE
 
 onXMLDeclVersionStrEnd : (x : XMLSTCK) => XMLDeclValue -> F1 q XMLST
 onXMLDeclVersionStrEnd v = push1 x.xmldecl v >> pure XMLDeclVersionE
@@ -489,8 +453,20 @@ xmlDeclStandaloneStr =
 --          State Transitions and DFAs - post declaration misc
 --------------------------------------------------------------------------------
 
-onXMLDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
-onXMLDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
+onXMLPostDeclMiscCommentWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscCommentWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscCommentWhitespaceE
+
+onXMLPostDeclMiscAfterCommentWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscAfterCommentWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscCommentWhitespaceE
+
+onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
+
+onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
+
+onXMLPostDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
 
 onXMLPostDeclMiscProcessingInstructionTargetStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLPostDeclMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscProcessingInstructionTargetE
@@ -498,124 +474,84 @@ onXMLPostDeclMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdeclmisc v
 onXMLPostDeclMiscProcessingInstructionDataStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLPostDeclMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscProcessingInstructionDataE
 
-onXMLPostDeclMiscCommentNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscCommentNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscCommentNLE
-
-onXMLPostDeclMiscCommentWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscCommentWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscCommentWhitespaceE
-
-onXMLPostDeclMiscAfterProcessingInstructionTargetNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscAfterProcessingInstructionTargetNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscAfterProcessingInstructionTargetNLE
-
-onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE
-
-onXMLPostDeclMiscAfterProcessingInstructionDataNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscAfterProcessingInstructionDataNL v = incline 1 >> push1 x.xmlpostdeclmisc (XMLMiscNL v) >> pure XMLPostDeclMiscAfterProcessingInstructionDataNLE
-
-onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostdeclmisc (XMLMiscWhitespace v) >> pure XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
-
 xmlPostDeclMiscCommentStr : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscCommentStr =
   dfa
-    [ conv linebreak (\bs => onXMLPostDeclMiscCommentNL bs)
-    , conv whitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
-    , conv xmlmisccomment (pushStr XMLDeclStandaloneStr)
+    [ conv xmlmisccomment (onXMLPostDeclMiscCommentStrEnd . XMLMiscComment)
     ]
 
 xmlPostDeclMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionTargetStr =
   dfa
-    [ conv xmlmisclinebreak (\bs => onXMLPostDeclMiscCommentNL bs)
-    , conv xmlmiscwhitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
-    , conv xmlmiscprocessinginstructiontarget (pushStr XMLDeclStandaloneStr)
+    [ conv xmlmiscprocessinginstructiontarget (onXMLPostDeclMiscProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
     ]
 
 xmlPostDeclMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionDataStr =
   dfa
-    [ conv xmlmisclinebreak (\bs => onXMLPostDeclMiscCommentNL bs)
-    , conv xmlmiscwhitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
-    , conv xmlmiscprocessinginstructiondata (pushStr XMLDeclStandaloneStr)
+    [ conv xmlmiscprocessinginstructiondata (onXMLPostDeclMiscProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
     ]
+
+--------------------------------------------------------------------------------
+--          State Transitions and DFAs - post declaration whitespace
+--------------------------------------------------------------------------------
+
+onXMLPostDeclWhitespace : (x : XMLSTCK q) => XMLPostDeclWhitespaceValue -> F1 q XMLST
+onXMLPostDeclWhitespace v = push1 x.xmlpostdeclwhitespace v >> pure XMLPostDeclWhitespaceE
 
 --------------------------------------------------------------------------------
 --          State Transitions and DFAs - documentation type declaration
 --------------------------------------------------------------------------------
 
-onXMLDocTypeBeforeNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeBeforeNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeBeforeNameNLE
+onXMLDocTypeBeforeNameWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeBeforeNameWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeBeforeNameWhitespaceE
 
-onXMLDocTypeBeforeNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeBeforeNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeBeforeNameWhitespaceE
+onXMLDocTypeAfterNameWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeAfterNameWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterNameWhitespaceE
+
+onXMLDocTypeAfterSystemURIWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeAfterSystemURIWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterSystemURIWhitespaceE
+
+onXMLDocTypeAfterPublicPublicIDWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeAfterPublicPublicIDWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterPublicPublicIDWhitespaceE
+
+onXMLDocTypeAfterPublicSystemIDWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeAfterPublicSystemIDWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterPublicSystemIDWhitespaceE
 
 onXMLDocTypeNameStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDocTypeNameStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeNameE
 
-onXMLDocTypeAfterNameNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterNameNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeAfterNameNLE
-
-onXMLDocTypeAfterNameWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterNameWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterNameWhitespaceE
-
 onXMLDocTypeSystemURIStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDocTypeSystemURIStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeSystemURIE
-
-onXMLDocTypeAfterSystemURINL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterSystemURINL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeAfterSystemURINLE
-
-onXMLDocTypeAfterSystemURIWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterSystemURIWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterSystemURIWhitespaceE
 
 onXMLDocTypePublicPublicPublicIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDoctypePublicPublicPublicIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicPublicIDE
 
-onXMLDocTypeAfterPublicPublicIDNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterPublicPublicIDNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeAfterPublicPublicIDNLE
-
-onXMLDocTypeAfterPublicPublicIDWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterPublicPublicIDWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterPublicPublicIDWhitespaceE
-
 onXMLDocTypePublicPublicSystemIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDoctypePublicPublicSystemIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicSystemIDE
-
-onXMLDocTypeAfterPublicSystemIDNL : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterPublicSystemIDNL v = incline 1 >> push1 x.xmldoctype (XMLDocTypeNL v) >> pure XMLDocTypeAfterPublicSystemIDNLE
-
-onXMLDocTypeAfterPublicSystemIDWhitespace : (x : XMLSTCK q) => ByteString -> F1 q XMLST
-onXMLDoctypeAfterPublicSystemIDWhitespace v = push1 x.xmldoctype (XMLDocTypeWhitespace v) >> pure XMLDocTypeAfterPublicSystemIDWhitespaceE
 
 xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
 xmlDocTypeNameStr =
   dfa
-    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeNL bs)
-    , conv xmldoctypewhitespace (\bs => onXMLDocTypeWhitespace bs)
-    , conv xmldoctypename (onXMLDocTypeNameStrEnd . XMLDocTypeName)
+    [ conv xmldoctypename (onXMLDocTypeNameStrEnd . XMLDocTypeName)
     ]
 
 xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
 xmlDocTypeSystemURIStr =
   dfa
-    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv xmldoctypewhitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
-    , conv xmldoctypesystem (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem)
+    [ conv xmldoctypesystem (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem)
     ]
 
 xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDStr =
   dfa
-    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
-    , conv xmldoctypewhitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
-    , conv xmldoctypepublicpublicid (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
+    [ conv xmldoctypepublicpublicid (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
     ]
 
 xmlDocTypePublicSystemIDStr : DFA q XMLSz XMLSTCK
 xmlDocTypePublicSystemIDStr =
   dfa
-    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeBeforePublicSystemIDNL bs)
-    , conv xmldoctypewhitespace (\bs => onXMLDocTypeBeforePublicSystemIDWhitespace bs)
-    , conv xmldoctypepublicsystemid (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
+    [ conv xmldoctypepublicsystemid (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
     ]
 
 --------------------------------------------------------------------------------
@@ -652,8 +588,7 @@ xmlInit =
 xmlDeclVersionAfter : DFA q XMLSz XMLSTCK
 xmlDeclVersionAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDeclPostVersionNL bs)
-    , conv whitespace (\bs => onXMLDeclPostVersionWhitespace bs)
+    [ conv whitespace (onXMLDeclPostVersionWhitespace . XMLDeclWhitespace)
     , read (str "encoding=") (pure XMLDeclEncodingS)
     , read (str "standalone=") (pure XMLDeclStandaloneS)
     , read (str "?>") (pure XMLPostDeclStart)
@@ -666,8 +601,7 @@ xmlDeclVersionAfter =
 xmlDeclEncodingAfter : DFA q XMLSz XMLSTCK
 xmlDeclEncodingAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDeclPostEncodingNL bs)
-    , conv whitespace (\bs => onXMLDeclPostEncodingWhitespace bs)
+    [ conv whitespace (onXMLDeclPostEncodingWhitespace . XMLDeclWhitespace)
     , read (str "standalone=") (pure XMLDeclStandaloneS)
     , read (str "?>") (pure XMLPostDeclStart)
     ]
@@ -679,8 +613,7 @@ xmlDeclEncodingAfter =
 xmlDeclStandaloneAfter : DFA q XMLSz XMLSTCK
 xmlDeclStandaloneAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
-    , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
+    [ conv whitespace (onXMLDeclPostStandaloneWhitespace . XMLDeclWhitespace)
     , read (str "?>") (pure XMLPostDeclStart)
     ]
 
@@ -691,8 +624,7 @@ xmlDeclStandaloneAfter =
 xmlPostDeclStart : DFA q XMLSz XMLSTCK
 xmlPostDeclStart =
   dfa
-    [ conv linebreak (\bs => onXMLDeclPostStandaloneNL bs)
-    , conv whitespace (\bs => onXMLDeclPostStandaloneWhitespace bs)
+    [ conv whitespace (onXMLPostDeclWhitespace . XMLPostDeclWhitespace)
     , read (str "<!--") (pure XMLMiscCommentStrStart)
     , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameS)
@@ -706,8 +638,7 @@ xmlPostDeclStart =
 xmlPostDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscCommentAfter =
   dfa
-    [ conv linebreak (\bs => onXMLPostDeclNL bs)
-    , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
+    [ conv whitespace (onXMLPostDeclWhitespace . XMLPostDeclWhitespace)
     , read (str "<!--") (pure XMLMiscCommentStr)
     , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
@@ -721,9 +652,8 @@ xmlPostDeclMiscCommentAfter =
 xmlPostDeclMiscProcessingInstructionTargetAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionTargetAfter =
   dfa
-    [ conv linebreak (\bs => onXMLPostDeclNL bs)
-    , conv whitespace (\bs => onXMLPostDeclWhitespace bs)
-    , conv (plus $ dot && not linebreak && not whitespace && not "?>") (onXMLPostDeclProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
+    [ conv whitespace (onXMLPostDeclMiscAfterProcessingInstructionTargetWhitespace . XMLMiscWhitespace)
+    , conv xmlmiscprocessinginstructiondata (onXMLPostDeclProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
     , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
     ]
 
@@ -734,8 +664,7 @@ xmlPostDeclMiscProcessingInstructionTargetAfter =
 xmlPostDeclMiscProcessingInstructionDataAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscProcessingInstructionDataAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    [ conv whitespace (onXMLPostDeclMiscAfterProcessingInstructionWhitespace . XMLMiscWhitespace)
     , conv "?>" (pure XMLPostDeclMiscProcessingInstructionE)
     ]
 
@@ -746,8 +675,7 @@ xmlPostDeclMiscProcessingInstructionDataAfter =
 xmlDocTypeNameAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeNameAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeAfterNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeAfterNameWhitespace bs)
+    [ conv whitespace (onXMLDocTypeAfterNameWhitespace . XMLDocTypeWhitespace)
     , read '>' (pure XMLDocTypeFinished)
     ]
 
@@ -758,8 +686,7 @@ xmlDocTypeNameAfter =
 xmlDocTypeSystemURIAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeSystemURIAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeAfterSystemURINL bs)
-    , conv whitespace (\bs => onXMLDocTypeAfterSystemURIWhitespace bs)
+    [ conv whitespace (onXMLDocTypeAfterSystemURIWhitespace . XMLDocTypeWhitespace)
     , read '>' (pure XMLDocTypeFinished)
     ]
 
@@ -770,8 +697,7 @@ xmlDocTypeSystemURIAfter =
 xmlDocTypePublicPublicIDAfter : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDAfter =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeAfterPublicPublicIDNL bs)
-    , conv whitespace (\bs => onXMLDocTypeAfterPublicPublicIDWhitespace bs)
+    [ conv whitespace (onXMLDocTypeAfterPublicPublicIDWhitespace . XMLDocTypeWhitespace)
     ]
 
 --------------------------------------------------------------------------------
