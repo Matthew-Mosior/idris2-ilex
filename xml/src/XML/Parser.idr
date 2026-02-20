@@ -69,14 +69,6 @@ xmldeclstandalone : RExp True
 xmldeclstandalone = str "yes" <|> str "no"
 
 --------------------------------------------------------------------------------
---          XMLPostDeclWhitespaceValue
---------------------------------------------------------------------------------
-
-public export
-data XMLPostDeclWhitespaceValue : Type where
-  XMLPostDeclWhitespace : ByteString -> XMPostDeclWhitespaceValue
-
---------------------------------------------------------------------------------
 --          XMLDocTypeValue
 --------------------------------------------------------------------------------
 
@@ -161,7 +153,6 @@ public export
 record XMLDocument where
   constructor MkXMLDocument
   decl               : Maybe (List XMLDeclValue)
-  postdeclwhitespace : Maybe (List XMLPostDeclWhitespaceValue)
   postdeclmisc       : Maybe (List XMLMiscValue)
   doctype            : Maybe (List XMLDocTypeValue)
   postdoctypemisc    : Maybe (List XMLMiscValue)
@@ -186,7 +177,6 @@ record XMLSTCK (q : Type) where
   err                   : Ref q (Maybe $ BoundedErr Void)
   xmlelementstack       : Ref q (SnocList (String, SnocList XMLElementValue))
   xmldecl               : Ref q (SnocList XMLDeclValue)
-  xmlpostdeclwhitespace : Ref q (SnocList XMLPostDeclWhitespaceValue)
   xmlpostdeclmisc       : Ref q (SnocList XMLMiscValue)
   xmldoctype            : Ref q (SnocList XMLDocTypeValue)
   xmlpostdoctypemisc    : Ref q (SnocList XMLMiscValue)
@@ -496,8 +486,8 @@ xmlPostDeclMiscProcessingInstructionDataStr =
 --          State Transitions and DFAs - post declaration whitespace
 --------------------------------------------------------------------------------
 
-onXMLPostDeclWhitespace : (x : XMLSTCK q) => XMLPostDeclWhitespaceValue -> F1 q XMLST
-onXMLPostDeclWhitespace v = push1 x.xmlpostdeclwhitespace v >> pure XMLPostDeclWhitespaceE
+onXMLPostDeclWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDeclWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclWhitespaceE
 
 --------------------------------------------------------------------------------
 --          State Transitions and DFAs - documentation type declaration
@@ -624,7 +614,7 @@ xmlDeclStandaloneAfter =
 xmlPostDeclStart : DFA q XMLSz XMLSTCK
 xmlPostDeclStart =
   dfa
-    [ conv whitespace (onXMLPostDeclWhitespace . XMLPostDeclWhitespace)
+    [ conv whitespace (onXMLPostDeclWhitespace . XMLMiscWhitespace)
     , read (str "<!--") (pure XMLMiscCommentStrStart)
     , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameS)
@@ -638,7 +628,7 @@ xmlPostDeclStart =
 xmlPostDeclMiscCommentAfter : DFA q XMLSz XMLSTCK
 xmlPostDeclMiscCommentAfter =
   dfa
-    [ conv whitespace (onXMLPostDeclWhitespace . XMLPostDeclWhitespace)
+    [ conv whitespace (onXMLPostDeclWhitespace . XMLMiscValue)
     , read (str "<!--") (pure XMLMiscCommentStr)
     , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
