@@ -22,6 +22,7 @@ import public Text.ILex
 --          Globally Forbidden Characters
 --------------------------------------------------------------------------------
 
+export
 forbidden : RExp True
 forbidden = -- basic control blocks
             range32 0x00 0x08 <|>
@@ -57,6 +58,7 @@ forbidden = -- basic control blocks
 --          Char
 --------------------------------------------------------------------------------
 
+export
 char : RExp True
 char = range32 0x0009 0x0009 <|>
        range32 0x000a 0x000a <|>
@@ -69,6 +71,7 @@ char = range32 0x0009 0x0009 <|>
 --          S
 --------------------------------------------------------------------------------
 
+export
 whitespace : RExp True
 whitespace = range32 0x0020 0x0020 <|>
              range32 0x0009 0x0009 <|>
@@ -76,9 +79,27 @@ whitespace = range32 0x0020 0x0020 <|>
              range32 0x000a 0x000a
 
 --------------------------------------------------------------------------------
+--          EncName
+--------------------------------------------------------------------------------
+
+export
+encname : RExp True
+encname = ( range32 0x0041 0x005a <|>
+            range32 0x0061 0x007a <|>
+          ) >>
+          ( range32 0x002d 0x002d <|>
+            range32 0x002e 0x002e <|>
+            range32 0x0030 0x0039 <|>
+            range32 0x0041 0x005a <|>
+            range32 0x005f 0x005f <|>
+            range32 0x0061 0x007a
+          )
+
+--------------------------------------------------------------------------------
 --          NameStartChar
 --------------------------------------------------------------------------------
 
+export
 namestartchar : RExp True
 namestartchar = range32 0x003a 0x003a <|>
                 range32 0x005f 0x005f <|>
@@ -101,6 +122,7 @@ namestartchar = range32 0x003a 0x003a <|>
 --          NameChar
 --------------------------------------------------------------------------------
 
+export
 namechar : RExp True
 namechar = namestartchar <|>
            range32 0x002d 0x002d <|>
@@ -114,6 +136,7 @@ namechar = namestartchar <|>
 --          PubidChar
 --------------------------------------------------------------------------------          
 
+export
 pubidchar : RExp True
 pubidchar = range32 0x000a 0x000a <|>
             range32 0x000d 0x000d <|>
