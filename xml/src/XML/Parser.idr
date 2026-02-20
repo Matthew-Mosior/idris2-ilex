@@ -94,7 +94,7 @@ data XMLDocTypeValue : Type where
 --------------------------------------------------------------------------------
 
 xmldoctypename : RExp True
-xmldoctypename = namestartchar >> star namechar 
+xmldoctypename = namestartchar >> star namechar
 
 xmldoctypesystem : RExp True
 xmldoctypesystem = star $ dot && not '"' && not forbidden
@@ -146,7 +146,7 @@ xmlelementendtagname : RExp True
 xmlelementendtagname = namestartchar >> star namechar
 
 xmlelementemptytagname : RExp True
-xmlelementemptytagname  = namestartchar >> star namechar 
+xmlelementemptytagname  = namestartchar >> star namechar
 
 xmlelementemptytagattributename : RExp True
 xmlelementemptytagattributename = namestartchar >> star namechar
@@ -509,7 +509,7 @@ xmlPostDeclMiscCommentStr =
   dfa
     [ conv linebreak (\bs => onXMLPostDeclMiscCommentNL bs)
     , conv whitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
-    , conv (plus $ dot && not "--") (pushStr XMLDeclStandaloneStr)
+    , conv xmlmisccomment (pushStr XMLDeclStandaloneStr)
     ]
 
 --------------------------------------------------------------------------------
