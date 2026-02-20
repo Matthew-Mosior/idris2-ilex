@@ -93,6 +93,12 @@ data XMLDocTypeValue : Type where
 --          XMLDocTypeValue - RExp
 --------------------------------------------------------------------------------
 
+xmldoctypewhitespace : RExp True
+xmldoctypewhitespace = ' ' <|> '\t'
+
+xmldoctypelinebreak : RExp True
+xmldoctypelinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
+
 xmldoctypename : RExp True
 xmldoctypename = namestartchar >> star namechar
 
@@ -561,33 +567,33 @@ onXMLDoctypeAfterPublicSystemIDWhitespace v = push1 x.xmldoctype (XMLDocTypeWhit
 xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
 xmlDocTypeNameStr =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeNL bs)
-    , conv whitespace (\bs => onXMLDocTypeWhitespace bs)
-    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypeNameStrEnd . XMLDocTypeName)
+    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeNL bs)
+    , conv xmldoctypewhitespace (\bs => onXMLDocTypeWhitespace bs)
+    , conv xmldoctypename (onXMLDocTypeNameStrEnd . XMLDocTypeName)
     ]
 
 xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
 xmlDocTypeSystemURIStr =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforeNameNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
-    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem)
+    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeBeforeNameNL bs)
+    , conv xmldoctypewhitespace (\bs => onXMLDocTypeBeforeNameWhitespace bs)
+    , conv xmldoctypesystem (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem)
     ]
 
 xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDStr =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
-    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
+    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeBeforePublicPublicIDNL bs)
+    , conv xmldoctypewhitespace (\bs => onXMLDocTypeBeforePublicPublicIDWhitespace bs)
+    , conv xmldoctypepublicpublicid (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
     ]
 
 xmlDocTypePublicSystemIDStr : DFA q XMLSz XMLSTCK
 xmlDocTypePublicSystemIDStr =
   dfa
-    [ conv linebreak (\bs => onXMLDocTypeBeforePublicSystemIDNL bs)
-    , conv whitespace (\bs => onXMLDocTypeBeforePublicSystemIDWhitespace bs)
-    , conv (plus $ dot && not linebreak && not whitespace) (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
+    [ conv xmldoctypelinebreak (\bs => onXMLDocTypeBeforePublicSystemIDNL bs)
+    , conv xmldoctypewhitespace (\bs => onXMLDocTypeBeforePublicSystemIDWhitespace bs)
+    , conv xmldoctypepublicsystemid (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
     ]
 
 --------------------------------------------------------------------------------
