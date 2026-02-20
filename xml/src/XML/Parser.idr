@@ -36,11 +36,17 @@ data XMLMiscValue : Type where
 --          XMLMiscValue - RExp
 --------------------------------------------------------------------------------
 
+xmlmiscwhitespace : RExp True
+xmlmiscwhitespace = ' ' <|> '\t'
+
+xmlmisclinebreak : RExp True
+xmlmisclinebreak = '\n' <|> "\n\r" <|> "\r\n" <|> '\r' <|> '\RS'
+
 xmlmisccomment : RExp True
 xmlmisccomment = (plus $ char && not '-') || ('-' >> (plus $ char && not '-'))
 
 xmlmiscprocessinginstructiontarget : RExp True
-xmlmiscprocessinginstructiontarget = plus $ namechar && not (like "xml")
+xmlmiscprocessinginstructiontarget = name && not (like "xml")
 
 xmlmiscprocessinginstructiondata : RExp True
 xmlmiscprocessinginstructiondata =  star $ char && not (str "?>")
@@ -516,6 +522,22 @@ xmlPostDeclMiscCommentStr =
     [ conv linebreak (\bs => onXMLPostDeclMiscCommentNL bs)
     , conv whitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
     , conv xmlmisccomment (pushStr XMLDeclStandaloneStr)
+    ]
+
+xmlPostDeclMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionTargetStr =
+  dfa
+    [ conv xmlmisclinebreak (\bs => onXMLPostDeclMiscCommentNL bs)
+    , conv xmlmiscwhitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
+    , conv xmlmiscprocessinginstructiontarget (pushStr XMLDeclStandaloneStr)
+    ]
+
+xmlPostDeclMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
+xmlPostDeclMiscProcessingInstructionDataStr =
+  dfa
+    [ conv xmlmisclinebreak (\bs => onXMLPostDeclMiscCommentNL bs)
+    , conv xmlmiscwhitespace (\bs => onXMLPostDeclMiscCommentWhitespace bs)
+    , conv xmlmiscprocessinginstructiondata (pushStr XMLDeclStandaloneStr)
     ]
 
 --------------------------------------------------------------------------------
