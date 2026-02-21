@@ -243,7 +243,6 @@ xmlinit = T1.do
   , "XMLDeclEncodingStr"
   , "XMLDeclEncodingE"
   , "XMLDeclEncodingWhitespaceE"
-  , "XMLDeclEncodingPostUnfinished"
   , "XMLDeclStandaloneS"
   , "XMLDeclStandaloneStrStart"
   , "XMLDeclStandaloneStr"
@@ -531,37 +530,31 @@ onXMLDocTypeNameStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDocTypeNameStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeNameE
 
 onXMLDocTypeSystemURIStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDocTypeSystemURIStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeSystemURIE
+onXMLDocTypeSystemURIStrEnd v = T1.do
+  Just v' <- tail v
+    | Nothing => pure XMLDocTypeSystemURIStrFail
+  Just v'' <- init v'
+    | Nothing => pure XMLDocTypeSystemURIStrFail
+  push1 x.xmldoctype v'''
+  pure XMLDocTypeSystemURIE
 
 onXMLDocTypePublicPublicPublicIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDoctypePublicPublicPublicIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicPublicIDE
+onXMLDoctypePublicPublicPublicIDStrEnd v = T1.do
+  Just v' <- tail v
+    | Nothing => pure XMLDocTypePublicPublicIDStrFail
+  Just v'' <- init v'
+    | Nothing => pure XMLDocTypePublicPublicIDStrFail
+  push1 x.xmldoctype v''
+  pure XMLDocTypePublicPublicIDE
 
 onXMLDocTypePublicPublicSystemIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDoctypePublicPublicSystemIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicSystemIDE
-
-xmlDocTypeNameStr : DFA q XMLSz XMLSTCK
-xmlDocTypeNameStr =
-  dfa
-    [ conv xmldoctypename (onXMLDocTypeNameStrEnd . XMLDocTypeName)
-    ]
-
-xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
-xmlDocTypeSystemURIStr =
-  dfa
-    [ conv xmldoctypesystem (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem)
-    ]
-
-xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
-xmlDocTypePublicPublicIDStr =
-  dfa
-    [ conv xmldoctypepublicpublicid (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
-    ]
-
-xmlDocTypePublicSystemIDStr : DFA q XMLSz XMLSTCK
-xmlDocTypePublicSystemIDStr =
-  dfa
-    [ conv xmldoctypepublicsystemid (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
-    ]
+onXMLDoctypePublicPublicSystemIDStrEnd v = T1.do
+  Just v' <- tail v
+    | Nothing => pure XMLDocTypeSystemURIStrFail
+  Just v'' <- init v'
+    | Nothing => pure XMLDocTypeSystemURIStrFail
+  push1 x.xmldoctype v''
+  pure XMLDocTypePublicSystemIDE
 
 --------------------------------------------------------------------------------
 --          State Transitions and DFAs - post documentation type whitespace
