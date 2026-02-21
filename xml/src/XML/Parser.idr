@@ -155,12 +155,12 @@ xmlelementemptytagattributevalue = star $ dot && not '<' && not '&' && not forbi
 public export
 record XMLDocument where
   constructor MkXMLDocument
-  decl               : Maybe (List XMLDeclValue)
-  postdeclmisc       : Maybe (List XMLMiscValue)
-  doctype            : Maybe (List XMLDocTypeValue)
-  postdoctypemisc    : Maybe (List XMLMiscValue)
-  root               : List XMLElementValue
-  postrootmisc       : Maybe (List XMLMiscValue)
+  decl            : Maybe (List XMLDeclValue)
+  postdeclmisc    : Maybe (List XMLMiscValue)
+  doctype         : Maybe (List XMLDocTypeValue)
+  postdoctypemisc : Maybe (List XMLMiscValue)
+  root            : List XMLElementValue
+  postrootmisc    : Maybe (List XMLMiscValue)
 
 %runElab derive "XMLDocument" [Show,Eq]
 
@@ -288,17 +288,18 @@ xmlinit = T1.do
   , "XMLDocTypeAfterPublicPublicIDWhitespaceE"
   , "XMLDocTypeAfterPublicSystemIDWhitespaceE"
   -- post doctype misc parser states
-  , "XMLPostDocTypeWhitespaceE"
+  , "XMLPostDocTypeStart"
+  , "XMLPostDoctypeWhitespaceE"
   , "XMLPostDocTypeMiscCommentWhitespaceE"
   , "XMLPostDocTypeMiscCommentStrStart"
   , "XMLPostDocTypeMiscCommentStr"
-  , "XMLPostDocTypelMiscCommentE"
+  , "XMLPostDocTypeMiscCommentE"
   , "XMLPostDocTypeMiscAfterProcessingInstructionTargetWhitespaceE"
   , "XMLPostDocTypeMiscAfterProcessingInstructionDataWhitespaceE"
   , "XMLPostDocTypeMiscProcessingInstructionTargetStrStart"
   , "XMLPostDocTypeMiscProcessingInstructionTargetStr"
   , "XMLPostDocTypeMiscProcessingInstructionTargetE"
-  , "XMLPostDoctypeMiscProcessingInstructionDataStrStart"
+  , "XMLPostDocTypeMiscProcessingInstructionDataStrStart"
   , "XMLPostDocTypeMiscProcessingInstructionDataStr"
   , "XMLPostDocTypeMiscProcessingInstructionDataE"
   , "XMLPostDocTypeMiscProcessingInstructionE"
@@ -350,6 +351,7 @@ xmlinit = T1.do
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
   -- post root element misc parser states
+  , "XMLPostElementStart"
   , "XMLPostElementWhitespaceE"
   , "XMLPostElementMiscCommentWhitespaceE"
   , "XMLPostElementMiscCommentStrStart"
@@ -364,7 +366,7 @@ xmlinit = T1.do
   , "XMLPostElementMiscProcessingInstructionDataStr"
   , "XMLPostElementMiscProcessingInstructionDataE"
   , "XMLPostElementMiscProcessingInstructionE"
-    -- terminal state
+  -- terminal state
   , "XMLDone"
   ]
 
@@ -462,7 +464,7 @@ onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => X
 onXMLPostDeclMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE
 
 onXMLPostDeclMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
-onXMLPostDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLDeclMiscCommentE
+onXMLPostDeclMiscCommentStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscCommentE
 
 onXMLPostDeclMiscProcessingInstructionTargetStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
 onXMLPostDeclMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclMiscProcessingInstructionTargetE
@@ -496,7 +498,7 @@ onXMLPostDeclWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
 onXMLPostDeclWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDeclWhitespaceE
 
 --------------------------------------------------------------------------------
---          State Transitions and DFAs - documentation type declaration
+--          State Transitions and DFAs - doctype declaration
 --------------------------------------------------------------------------------
 
 onXMLDocTypeBeforeNameWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
@@ -557,11 +559,101 @@ onXMLDoctypePublicPublicSystemIDStrEnd v = T1.do
   pure XMLDocTypePublicSystemIDE
 
 --------------------------------------------------------------------------------
---          State Transitions and DFAs - post documentation type whitespace
+--          State Transitions and DFAs - post doctype whitespace
 --------------------------------------------------------------------------------
 
 onXMLPostDocTypeWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
 onXMLPostDocTypeWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDocTypeWhitespaceE
+
+--------------------------------------------------------------------------------
+--          State Transitions and DFAs - post doctype misc
+--------------------------------------------------------------------------------
+
+onXMLPostDocTypeMiscCommentWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscCommentWhitespace v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscCommentWhitespaceE
+
+onXMLPostDocTypeMiscAfterCommentWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscAfterCommentWhitespace v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscCommentWhitespaceE
+
+onXMLPostDocTypeMiscAfterProcessingInstructionTargetWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscAfterProcessingInstructionTargetWhitespace v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscAfterProcessingInstructionTargetWhitespaceE
+
+onXMLPostDocTypeMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscAfterProcessingInstructionDataWhitespaceE
+
+onXMLPostDocTypeMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscCommentStrEnd v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscCommentE
+
+onXMLPostDocTypeMiscProcessingInstructionTargetStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscProcessingInstructionTargetE
+
+onXMLPostDocTypeMiscProcessingInstructionDataStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostdoctypemisc v >> pure XMLPostDocTypeMiscProcessingInstructionDataE
+
+xmlPostDocTypeMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlPostDocTypeMiscCommentStr =
+  dfa
+    [ conv xmlmisccomment (onXMLPostDocTypeMiscCommentStrEnd . XMLMiscComment)
+    ]
+
+xmlPostDocTypeMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
+xmlPostDocTypeMiscProcessingInstructionTargetStr =
+  dfa
+    [ conv xmlmiscprocessinginstructiontarget (onXMLPostDocTypeMiscProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
+    ]
+
+xmlPostDocTypeMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
+xmlPostDocTypeMiscProcessingInstructionDataStr =
+  dfa
+    [ conv xmlmiscprocessinginstructiondata (onXMLPostDocTypeMiscProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
+    ]
+
+--------------------------------------------------------------------------------
+--          State Transitions and DFAs - root element
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+--          State Transitions and DFAs - post root element misc
+--------------------------------------------------------------------------------
+
+onXMLPostElementMiscCommentWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscCommentWhitespace v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscCommentWhitespaceE
+
+onXMLPostElementMiscAfterCommentWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscAfterCommentWhitespace v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscCommentWhitespaceE
+
+onXMLPostElementMiscAfterProcessingInstructionTargetWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscAfterProcessingInstructionTargetWhitespace v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscAfterProcessingInstructionTargetWhitespaceE
+
+onXMLPostElementMiscAfterProcessingInstructionDataWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscAfterProcessingInstructionDataWhitespace v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscAfterProcessingInstructionDataWhitespaceE
+
+onXMLPostElementMiscCommentStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscCommentStrEnd v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscCommentE
+
+onXMLPostElementMiscProcessingInstructionTargetStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscProcessingInstructionTargetStrEnd v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscProcessingInstructionTargetE
+
+onXMLPostElementMiscProcessingInstructionDataStrEnd : (x : XMLSTCK) => XMLMiscValue -> F1 q XMLST
+onXMLPostElementMiscProcessingInstructionDataStrEnd v = push1 x.xmlpostrootmisc v >> pure XMLPostElementMiscProcessingInstructionDataE
+
+xmlPostElementMiscCommentStr : DFA q XMLSz XMLSTCK
+xmlPostElementMiscCommentStr =
+  dfa
+    [ conv xmlmisccomment (onXMLPostElementMiscCommentStrEnd . XMLMiscComment)
+    ]
+
+xmlPostElementMiscProcessingInstructionTargetStr : DFA q XMLSz XMLSTCK
+xmlPostElementMiscProcessingInstructionTargetStr =
+  dfa
+    [ conv xmlmiscprocessinginstructiontarget (onXMLPostElementMiscProcessingInstructionTargetStrEnd . XMLMiscProcessingInstructionTarget)
+    ]
+
+xmlPostElementMiscProcessingInstructionDataStr : DFA q XMLSz XMLSTCK
+xmlPostElementMiscProcessingInstructionDataStr =
+  dfa
+    [ conv xmlmiscprocessinginstructiondata (onXMLPostElementMiscProcessingInstructionDataStrEnd . XMLMiscProcessingInstructionData)
+    ]
 
 --------------------------------------------------------------------------------
 --          State Transition - EOI
@@ -634,8 +726,8 @@ xmlPostDeclStart : DFA q XMLSz XMLSTCK
 xmlPostDeclStart =
   dfa
     [ conv whitespace (onXMLPostDeclWhitespace . XMLMiscWhitespace)
-    , read (str "<!--") (pure XMLMiscCommentStrStart)
-    , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
+    , read (str "<!--") (pure XMLPostDeclMiscCommentStrStart)
+    , read (str "<?") (pure XMLPostDeclMiscProcessingInstructionTargetStrStart)
     , read (str "<!DOCTYPE") (pure XMLAfterDocType)
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
@@ -834,15 +926,12 @@ xmlSteps =
     , E XMLDeclStandaloneE xmlDeclStandaloneAfter
       -- After XML declaration - optional (comments and processing instructions)
     , E XMLPostDeclStart xmlPostDeclStart
-    , E XMLMiscCommentStrStart xmlPostDeclMiscCommentStr
+    , E XMLPostDeclMiscCommentStrStart xmlPostDeclMiscCommentStr
     , E XMLPostDeclMiscProcessingInstructionTargetE xmlPostDeclMiscProcessingInstructionTargetAfter
     , E XMLPostDeclMiscProcessingInstructionDataE xmlPostDeclMiscProcessingInstructionDataAfter
-    , E XMLPostDeclMiscCommentNLE xmlPostDeclStart
-    , E XMLPostDeclMiscCommentWhiteSpaceE xmlPostDeclStart
-    , E XMLMiscProcessingInstructionTargetStrStart xmlPostDeclMiscProcessingInstructionTargetStr
-    , E XMLPostDeclMiscAfterProcessingInstructionTargetNLE xmlPostDeclMiscProcessingInstructionTargetAfter
+    , E XMLPostDeclMiscCommentWhitespaceE xmlPostDeclStart
+    , E XMLPostDeclMiscProcessingInstructionTargetStrStart xmlPostDeclMiscProcessingInstructionTargetStr
     , E XMLPostDeclMiscAfterProcessingInstructionTargetWhitespaceE xmlPostDeclMiscProcessingInstructionTargetAfter
-    , E XMLPostDeclMiscAfterProcessingInstructionDataNLE xmlPostDeclMiscProcessingInstructionDataAfter
     , E XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE xmlPostDeclMiscProcessingInstructionDataAfter
     -- XML DocType - optional
     , E XMLAfterDocType xmlAfterDocType
@@ -857,6 +946,25 @@ xmlSteps =
     , E XMLDocTypePublicPublicIDE xmlDocTypePublicPublicIDAfter
     , E XMLDocTypePublicPublicIDAndWhitespaceE xmlDocTypePublicPublicIDAndWhitespaceAfter
     , E XMLDocTypePublicSystemIDE xmlDocTypePublicSystemIDAfter
+      -- After DocType - optional (comments and processing instructions)
+    , E XMLPostDocTypeStart xmlPostDocTypeStart
+    , E XMLPostDocTypeMiscCommentStrStart xmlPostDocTypeMiscCommentStr
+    , E XMLPostDocTypeMiscProcessingInstructionTargetE xmlPostDocTypeMiscProcessingInstructionTargetAfter
+    , E XMLPostDocTypeMiscProcessingInstructionDataE xmlPostDocTypeMiscProcessingInstructionDataAfter
+    , E XMLPostDocTypeMiscCommentWhitespaceE xmlPostDocTypeStart
+    , E XMLPostDocTypeMiscProcessingInstructionTargetStrStart xmlPostDocTypeMiscProcessingInstructionTargetStr
+    , E XMLPostDocTypeMiscAfterProcessingInstructionTargetWhitespaceE xmlPostDocTypeMiscProcessingInstructionTargetAfter
+    , E XMLPostDocTypeMiscAfterProcessingInstructionDataWhitespaceE xmlPostDocTypeMiscProcessingInstructionDataAfter
+      -- XML root element - required
+      -- After root element - optional (comments and processing instructions)
+    , E XMLPostElementStart xmlPostElementStart
+    , E XMLPostElementMiscCommentStrStart xmlPostElementMiscCommentStr
+    , E XMLPostElementMiscProcessingInstructionTargetE xmlPostElementMiscProcessingInstructionTargetAfter
+    , E XMLPostElementMiscProcessingInstructionDataE xmlPostElementMiscProcessingInstructionDataAfter
+    , E XMLPostElementMiscCommentWhitespaceE xmlPostElementStart
+    , E XMLPostElementMiscProcessingInstructionTargetStrStart xmlPostElementMiscProcessingInstructionTargetStr
+    , E XMLPostElementMiscAfterProcessingInstructionTargetWhitespaceE xmlPostElementMiscProcessingInstructionTargetAfter
+    , E XMLPostElementMiscAfterProcessingInstructionDataWhitespaceE xmlPostElementMiscProcessingInstructionDataAfter
     ]
 
 --------------------------------------------------------------------------------
