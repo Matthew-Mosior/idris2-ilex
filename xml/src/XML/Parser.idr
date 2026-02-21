@@ -872,7 +872,7 @@ xmlSteps =
 
 xmlEOI : XMLST -> XMLSTCK q -> F1 q (Either (BoundedErr Void) XMLDocument)
 xmlEOI st x =
-  case st == XMLIni || st == XMLEmpty of
+  case st == XMLIni || st == XMLEmpty || isNil x.root of
     True  => arrFail XMLSTCK xmlErr st x
     False => T1.do
       _ <- onEOI
