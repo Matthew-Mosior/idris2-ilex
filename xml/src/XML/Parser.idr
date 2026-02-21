@@ -88,13 +88,16 @@ xmldoctypename : RExp True
 xmldoctypename = namestartchar >> star namechar
 
 xmldoctypesystem : RExp True
-xmldoctypesystem = star $ dot && not '"' && not forbidden
+xmldoctypesystem = ('"' >> star $ dot && not '"' && not forbidden >> '"') ||
+                   ('\'' >> star $ dot && not '\'' && not forbidden >> '\'')
 
 xmldoctypepublicpublicid : RExp True
-xmldoctypepublicpublicid = star $ pubidchar
+xmldoctypepublicpublicid = ('"' >> star $ pubidchar >> '"') ||
+                           ('\'' >> star $ pubidchar >> '\'')
 
 xmldoctypepublicsystemid : RExp True
-xmldoctypepublicsystemid = star $ dot && not '"' && not forbidden
+xmldoctypepublicsystemid = ('"' >> star $ dot && not '"' && not forbidden >> '"') ||
+                           ('\'' >> star $ dot && not '\'' && not forbidden >> '\'')
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
@@ -267,10 +270,12 @@ xmlinit = T1.do
   , "XMLDocTypeNameStrStart"
   , "XMLDocTypeNameStr"
   , "XMLDocTypeNameE"
+  , "XMLDocTypeSystemE"
   , "XMLDocTypeSystemURIS"
   , "XMLDocTypeSystemURIStrStart"
   , "XMLDocTypeSystemURIStr"
   , "XMLDocTypeSystemURIE"
+  , "XMLDocTypePublicE"
   , "XMLDocTypePublicPublicIDStrStart"
   , "XMLDocTypePublicPublicIDStr"
   , "XMLDocTypePublicPublicIDE"
@@ -284,6 +289,7 @@ xmlinit = T1.do
   , "XMLDocTypeAfterPublicPublicIDWhitespaceE"
   , "XMLDocTypeAfterPublicSystemIDWhitespaceE"
   -- post doctype misc parser states
+  , "XMLPostDocTypeWhitespaceE"
   , "XMLPostDocTypeMiscCommentWhitespaceE"
   , "XMLPostDocTypeMiscCommentStrStart"
   , "XMLPostDocTypeMiscCommentStr"
@@ -345,6 +351,7 @@ xmlinit = T1.do
   , "XMLElementEndTagStr"
   , "XMLElementEndTagE"
   -- post root element misc parser states
+  , "XMLPostElementWhitespaceE"
   , "XMLPostElementMiscCommentWhitespaceE"
   , "XMLPostElementMiscCommentStrStart"
   , "XMLPostElementMiscCommentStr"
@@ -499,8 +506,20 @@ onXMLDoctypeBeforeNameWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeBefo
 onXMLDocTypeAfterNameWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
 onXMLDoctypeAfterNameWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterNameWhitespaceE
 
+onXMLDocTypeAfterSystem : (x : XMLSTCK q) => F1 q XMLST
+onXMLDocTypeAfterSystem = pure XMLDocTypeSystemE
+
+onXMLDocTypeAfterSystemWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeAfterSystemWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterSystemWhitespaceE
+
 onXMLDocTypeAfterSystemURIWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
 onXMLDoctypeAfterSystemURIWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterSystemURIWhitespaceE
+
+onXMLDocTypeAfterPublic : (x : XMLSTCK q) => F1 q XMLST
+onXMLDocTypeAfterPublic = pure XMLDocTypePublicE
+
+onXMLDocTypeAfterPublicWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
+onXMLDoctypeAfterPublicWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterPublicWhitespaceE
 
 onXMLDocTypeAfterPublicPublicIDWhitespace : (x : XMLSTCK q) => XMLDocTypeValue -> F1 q XMLST
 onXMLDoctypeAfterPublicPublicIDWhitespace v = push1 x.xmldoctype v >> pure XMLDocTypeAfterPublicPublicIDWhitespaceE
@@ -545,6 +564,13 @@ xmlDocTypePublicSystemIDStr =
     ]
 
 --------------------------------------------------------------------------------
+--          State Transitions and DFAs - post documentation type whitespace
+--------------------------------------------------------------------------------
+
+onXMLPostDocTypeWhitespace : (x : XMLSTCK q) => XMLMiscValue -> F1 q XMLST
+onXMLPostDocTypeWhitespace v = push1 x.xmlpostdeclmisc v >> pure XMLPostDocTypeWhitespaceE
+
+--------------------------------------------------------------------------------
 --          State Transition - EOI
 --------------------------------------------------------------------------------
 
@@ -567,7 +593,7 @@ xmlInit =
     [ read (str "<?xml version=") (pure XMLDeclVersionS)
     , conv (str "<!--") (pure XMLPostDeclMiscCommentS)
     , conv (str "<?") (pure XMLPostDeclMiscProcessingInstructionTargetStrStart)
-    , conv (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , conv (str "<!DOCTYPE") (pure XMLAfterDocType)
     , conv '<' (pure XMLElementStartTagNameS)
     ]
 
@@ -617,7 +643,7 @@ xmlPostDeclStart =
     [ conv whitespace (onXMLPostDeclWhitespace . XMLMiscWhitespace)
     , read (str "<!--") (pure XMLMiscCommentStrStart)
     , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
-    , read (str "<!DOCTYPE") (pure XMLDocTypeNameS)
+    , read (str "<!DOCTYPE") (pure XMLAfterDocType)
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
@@ -631,7 +657,7 @@ xmlPostDeclMiscCommentAfter =
     [ conv whitespace (onXMLPostDeclWhitespace . XMLMiscValue)
     , read (str "<!--") (pure XMLMiscCommentStr)
     , read (str "<?") (pure XMLMiscProcessingInstructionTargetStrStart)
-    , read (str "<!DOCTYPE") (pure XMLDocTypeNameStr)
+    , read (str "<!DOCTYPE") (pure XMLAfterDocType)
     , read '<' (pure XMLElementStartTagNameStrStart)
     ]
 
@@ -659,6 +685,27 @@ xmlPostDeclMiscProcessingInstructionDataAfter =
     ]
 
 --------------------------------------------------------------------------------
+--          DFA - after doctype
+--------------------------------------------------------------------------------
+
+xmlAfterDocType : DFA q XMLSz XMLSTCK
+xmlAfterDocType =
+  dfa
+    [ conv whitespace (onXMLDocTypeBeforeNameWhitespace . XMLDocTypeWhitespace)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype and at least one whitespace
+--------------------------------------------------------------------------------
+
+xmlAfterDocTypeAndWhitespace : DFA q XMLSz XMLSTCK
+xmlAfterDocTypeAndWhitespace =
+  dfa
+    [ conv whitespace (onXMLDocTypeBeforeNameWhitespace . XMLDocTypeWhitespace)
+    , conv xmldoctypename (onXMLDocTypeNameStrEnd . XMLDocTypeName)
+    ]
+
+--------------------------------------------------------------------------------
 --          DFA - after doctype name
 --------------------------------------------------------------------------------
 
@@ -667,6 +714,40 @@ xmlDocTypeNameAfter =
   dfa
     [ conv whitespace (onXMLDocTypeAfterNameWhitespace . XMLDocTypeWhitespace)
     , read '>' (pure XMLDocTypeFinished)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype name and at least one whitespace
+--------------------------------------------------------------------------------
+
+xmlDocTypeNameAndWhitespaceAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeNameAndWhitespaceAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterNameWhitespace . XMLDocTypeWhitespace)
+    , read (str "SYSTEM") (\_ => onXMLDocTypeAfterSystem)
+    , read (str "PUBLIC") (\_ => onXMLDocTypeAfterPublic)
+    , read '>' (pure XMLDocTypeFinished)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype system
+--------------------------------------------------------------------------------
+
+xmlDocTypeSystemAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterSystemWhitespace . XMLDocTypeWhitespace)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype system and at least one whitespace
+--------------------------------------------------------------------------------
+
+xmlDocTypeSystemAndWhitespaceAfter : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemAndWhitespaceAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterSystemWhitespace . XMLDocTypeWhitespace)
+    , conv xmldoctypesystem (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystemID)
     ]
 
 --------------------------------------------------------------------------------
@@ -681,6 +762,27 @@ xmlDocTypeSystemURIAfter =
     ]
 
 --------------------------------------------------------------------------------
+--          DFA - after doctype public
+--------------------------------------------------------------------------------
+
+xmlDocTypePublicAfter : DFA q XMLSz XMLSTCK
+xmlDocTypePublicAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterNameWhitespace . XMLDocTypeWhitespace)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype public and at least one whitespace
+--------------------------------------------------------------------------------
+
+xmlDocTypePublicAndWhitespaceAfter : DFA q XMLSz XMLSTCK
+xmlDocTypePublicAndWhitespaceAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterNameWhitespace . XMLDocTypeWhitespace)
+    , conv xmldoctypepublicpublicid (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
+    ]
+
+--------------------------------------------------------------------------------
 --          DFA - after doctype public public id
 --------------------------------------------------------------------------------
 
@@ -688,6 +790,28 @@ xmlDocTypePublicPublicIDAfter : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDAfter =
   dfa
     [ conv whitespace (onXMLDocTypeAfterPublicPublicIDWhitespace . XMLDocTypeWhitespace)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype public public id and at least one whitespace
+--------------------------------------------------------------------------------
+
+xmlDocTypePublicPublicIDAndWhiteSpaceAfter : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDAndWhitespaceAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterPublicPublicIDWhitespace . XMLDocTypeWhitespace)
+    , conv xmldoctypepublicsystemid (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
+    ]
+
+--------------------------------------------------------------------------------
+--          DFA - after doctype public system id
+--------------------------------------------------------------------------------
+
+xmlDocTypePublicSystemIDAfter : DFA q XMLSz XMLSTCK
+xmlDocTypePublicSystemIDAfter =
+  dfa
+    [ conv whitespace (onXMLDocTypeAfterPublicPublicIDWhitespace . XMLDocTypeWhitespace)
+    , read '>' (pure XMLDocTypeFinished)
     ]
 
 --------------------------------------------------------------------------------
@@ -728,6 +852,18 @@ xmlSteps =
     , E XMLPostDeclMiscAfterProcessingInstructionDataNLE xmlPostDeclMiscProcessingInstructionDataAfter
     , E XMLPostDeclMiscAfterProcessingInstructionDataWhitespaceE xmlPostDeclMiscProcessingInstructionDataAfter
     -- XML DocType - optional
+    , E XMLAfterDocType xmlAfterDocType
+    , E XMLDocTypeBeforeNameWhitespaceE xmlAfterDocType
+    , E XMLDocTypeNameE xmlDocTypeNameAfter
+    , E XMLDocTypeAfterNameWhitespaceE xmlDocTypeNameAndWhitespaceAfter
+    , E XMLDocTypeSystemE xmlDocTypeSystemAfter
+    , E XMLDocTypeAfterSystemWhitespaceE xmlDocTypeSystemAndWhitespaceAfter
+    , E XMLDocTypePublicE xmlDocTypePublicAfter
+    , E XMLDocTypeAfterPublicWhitespaceE xmlDocTypePublicAndWhitespaceAfter
+    , E XMLDocTypeSystemURIE xmlDocTypeSystemURIAfter
+    , E XMLDocTypePublicPublicIDE xmlDocTypePublicPublicIDAfter
+    , E XMLDocTypePublicPublicIDAndWhitespaceE xmlDocTypePublicPublicIDAndWhitespaceAfter
+    , E XMLDocTypePublicSystemIDE xmlDocTypePublicSystemIDAfter
     ]
 
 --------------------------------------------------------------------------------
