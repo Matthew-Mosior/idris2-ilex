@@ -275,6 +275,7 @@ xmlinit = T1.do
   , "XMLDocTypeSystemURIStr"
   , "XMLDocTypeSystemURIE"
   , "XMLDocTypePublicE"
+  , "XMLDocTypePublicPublicIDS"
   , "XMLDocTypePublicPublicIDStrStart"
   , "XMLDocTypePublicPublicIDStr"
   , "XMLDocTypePublicPublicIDE"
@@ -532,31 +533,52 @@ onXMLDocTypeNameStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDocTypeNameStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeNameE
 
 onXMLDocTypeSystemURIStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDocTypeSystemURIStrEnd v = T1.do
-  Just v' <- tail v
-    | Nothing => pure XMLDocTypeSystemURIStrFail
-  Just v'' <- init v'
-    | Nothing => pure XMLDocTypeSystemURIStrFail
-  push1 x.xmldoctype v'''
-  pure XMLDocTypeSystemURIE
+onXMLDocTypeSystemURIStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypeSystemURIE
 
 onXMLDocTypePublicPublicPublicIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDoctypePublicPublicPublicIDStrEnd v = T1.do
-  Just v' <- tail v
-    | Nothing => pure XMLDocTypePublicPublicIDStrFail
-  Just v'' <- init v'
-    | Nothing => pure XMLDocTypePublicPublicIDStrFail
-  push1 x.xmldoctype v''
-  pure XMLDocTypePublicPublicIDE
+onXMLDoctypePublicPublicPublicIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicPublicIDE
 
 onXMLDocTypePublicPublicSystemIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
-onXMLDoctypePublicPublicSystemIDStrEnd v = T1.do
-  Just v' <- tail v
-    | Nothing => pure XMLDocTypeSystemURIStrFail
-  Just v'' <- init v'
-    | Nothing => pure XMLDocTypeSystemURIStrFail
-  push1 x.xmldoctype v''
-  pure XMLDocTypePublicSystemIDE
+onXMLDoctypePublicPublicSystemIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicSystemIDE
+
+xmlDocTypeSystemURIS : DFA q XMLSz XMLSTCK
+xmlDocTypesystemURIS =
+  dfa
+    [ copen '"' (pure XMLDocTypeSystemURIStrStart)
+    ]
+
+xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
+    , read xmldoctypesystem (pushStr XMLDocTypeSystemURIStr)
+    ]
+
+xmlDocTypePublicPublicIDS : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDS =
+  dfa
+    [ copen '"' (pure XMLDocTypePublicPublicIDStrStart)
+    ]
+
+xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
+    , read xmldoctypepublicpublidid (pushStr XMLDocTypePublicPublicIDStr)
+    ]
+
+xmlDocTypePublicSystemIDS : DFA q XMLSz XMLSTCK
+xmlDocTypePublicSystemIDS =
+  dfa
+    [ copen '"' (pure XMLDocTypePublicSystemIDStrStart)
+    ]
+
+xmlDocTypePublicSystemIDStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicSystemIDStr =
+  dfa
+    [ cclose '"' $ getStr >>= onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID
+    , read xmldoctypepublicsystemid (pushStr XMLDocTypePublicSystemIDStr)
+    ]
 
 --------------------------------------------------------------------------------
 --          State Transitions and DFAs - post doctype whitespace
