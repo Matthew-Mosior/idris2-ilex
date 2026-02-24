@@ -87,17 +87,23 @@ data XMLDocTypeValue : Type where
 xmldoctypename : RExp True
 xmldoctypename = namestartchar >> star namechar
 
-xmldoctypesystem : RExp True
-xmldoctypesystem = ('"' >> star $ dot && not '"' && not forbidden >> '"') ||
-                   ('\'' >> star $ dot && not '\'' && not forbidden >> '\'')
+xmldoctypesystemdoublequote : RExp True
+xmldoctypesystemdoublequote = star $ dot && not '"' && not forbidden
 
-xmldoctypepublicpublicid : RExp True
-xmldoctypepublicpublicid = ('"' >> star $ pubidchar >> '"') ||
-                           ('\'' >> star $ pubidchar >> '\'')
+xmldoctypesystemsinglequote : RExp True
+xmldoctypesystemsinglequote = star $ dot && not '\'' && not forbidden
 
-xmldoctypepublicsystemid : RExp True
-xmldoctypepublicsystemid = ('"' >> star $ dot && not '"' && not forbidden >> '"') ||
-                           ('\'' >> star $ dot && not '\'' && not forbidden >> '\'')
+xmldoctypepublicpubliciddoublequote : RExp True
+xmldoctypepublicpubliciddoublequote = star $ pubidchar && not '"'
+
+xmldoctypepublicpublicidsinglequote : RExp True
+xmldoctypepublicpublicidsinglequote = star $ pubidchar && not '\''
+
+xmldoctypepublicsystemidsinglequote : RExp True
+xmldoctypepublicsystemidsinglequote = star $ dot && not '"' && not forbidden
+
+xmldoctypepublicsystemidsinglequote : RExp True
+xmldoctypepublicsystemidsinglequote = star $ dot && not '\'' && not forbidden
 
 --------------------------------------------------------------------------------
 --          XMLElementValue
@@ -270,17 +276,17 @@ xmlinit = T1.do
   , "XMLDocTypeNameStr"
   , "XMLDocTypeNameE"
   , "XMLDocTypeSystemE"
-  , "XMLDocTypeSystemURIS"
-  , "XMLDocTypeSystemURIStrStart"
+  , "XMLDocTypeSystemURIDoubleQuoteStrStart"
+  , "XMLDocTypeSystemURISingleQuoteStrStart"
   , "XMLDocTypeSystemURIStr"
   , "XMLDocTypeSystemURIE"
   , "XMLDocTypePublicE"
-  , "XMLDocTypePublicPublicIDS"
-  , "XMLDocTypePublicPublicIDStrStart"
+  , "XMLDocTypePublicPublicIDDoubleQuoteStrStart"
+  , "XMLDocTypePublicPublicIDSingleQuoteStrStart"
   , "XMLDocTypePublicPublicIDStr"
   , "XMLDocTypePublicPublicIDE"
-  , "XMLDocTypePublicSystemIDS"
-  , "XMLDocTypePublicSystemIDStrStart"
+  , "XMLDocTypePublicSystemIDDoubleQuoteStrStart"
+  , "XMLDocTypePublicSystemIDSingleQuoteStrStart"
   , "XMLDocTypePublicSystemIDStr"
   , "XMLDocTypePublicSystemIDE"
   , "XMLDocTypeBeforeNameWhitespaceE"
@@ -541,43 +547,46 @@ onXMLDoctypePublicPublicPublicIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTy
 onXMLDocTypePublicPublicSystemIDStrEnd : (x : XMLSTCK) => XMLDocTypeValue -> F1 q XMLST
 onXMLDoctypePublicPublicSystemIDStrEnd v = push1 x.xmldoctype v >> pure XMLDocTypePublicSystemIDE
 
-xmlDocTypeSystemURIS : DFA q XMLSz XMLSTCK
-xmlDocTypesystemURIS =
-  dfa
-    [ copen '"' (pure XMLDocTypeSystemURIStrStart)
-    ]
-
-xmlDocTypeSystemURIStr : DFA q XMLSz XMLSTCK
-xmlDocTypeSystemURIStr =
+xmlDocTypeSystemURIDoubleQuoteStr : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURIDoubleQuoteStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
-    , read xmldoctypesystem (pushStr XMLDocTypeSystemURIStr)
+    , read xmldoctypesystemdoublequote (pushStr XMLDocTypeSystemURIStr)
     ]
 
-xmlDocTypePublicPublicIDS : DFA q XMLSz XMLSTCK
-xmlDocTypePublicPublicIDS =
+xmlDocTypeSystemURISingleQuoteStr : DFA q XMLSz XMLSTCK
+xmlDocTypeSystemURISingleQuoteStr =
   dfa
-    [ copen '"' (pure XMLDocTypePublicPublicIDStrStart)
+    [ cclose '\'' $ getStr >>= onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystem
+    , read xmldoctypesystemsinglequote (pushStr XMLDocTypeSystemURIStr)
     ]
 
-xmlDocTypePublicPublicIDStr : DFA q XMLSz XMLSTCK
-xmlDocTypePublicPublicIDStr =
+xmlDocTypePublicPublicIDDoubleQuoteStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDDoubleQuoteStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
-    , read xmldoctypepublicpublidid (pushStr XMLDocTypePublicPublicIDStr)
+    , read xmldoctypepublicpublididdoublequote (pushStr XMLDocTypePublicPublicIDStr)
     ]
 
-xmlDocTypePublicSystemIDS : DFA q XMLSz XMLSTCK
-xmlDocTypePublicSystemIDS =
+xmlDocTypePublicPublicIDSingleQuoteStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicPublicIDSingleQuoteStr =
   dfa
-    [ copen '"' (pure XMLDocTypePublicSystemIDStrStart)
+    [ cclose '\'' $ getStr >>= onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID
+    , read xmldoctypepublicpublididsinglequote (pushStr XMLDocTypePublicPublicIDStr)
     ]
 
-xmlDocTypePublicSystemIDStr : DFA q XMLSz XMLSTCK
-xmlDocTypePublicSystemIDStr =
+xmlDocTypePublicSystemIDDoubleQuoteStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicSystemIDDoubleQuoteStr =
   dfa
     [ cclose '"' $ getStr >>= onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID
-    , read xmldoctypepublicsystemid (pushStr XMLDocTypePublicSystemIDStr)
+    , read xmldoctypepublicsystemiddoublequote (pushStr XMLDocTypePublicSystemIDStr)
+    ]
+
+xmlDocTypePublicSystemIDSingleQuoteStr : DFA q XMLSz XMLSTCK
+xmlDocTypePublicSystemIDSingleQuoteStr =
+  dfa
+    [ cclose '\'' $ getStr >>= onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID
+    , read xmldoctypepublicsystemidsinglequote (pushStr XMLDocTypePublicSystemIDStr)
     ]
 
 --------------------------------------------------------------------------------
@@ -854,7 +863,8 @@ xmlDocTypeSystemAndWhitespaceAfter : DFA q XMLSz XMLSTCK
 xmlDocTypeSystemAndWhitespaceAfter =
   dfa
     [ conv whitespace (onXMLDocTypeAfterSystemWhitespace . XMLDocTypeWhitespace)
-    , conv xmldoctypesystem (onXMLDocTypeSystemURIStrEnd . XMLDocTypeSystemID)
+    , copen '"' (pure XMLDocTypeSystemURIDoubleQuoteStrStart)
+    , copen '\'' (pure XMLDocTypeSystemURISingleQuoteStrStart)
     ]
 
 --------------------------------------------------------------------------------
@@ -886,7 +896,8 @@ xmlDocTypePublicAndWhitespaceAfter : DFA q XMLSz XMLSTCK
 xmlDocTypePublicAndWhitespaceAfter =
   dfa
     [ conv whitespace (onXMLDocTypeAfterNameWhitespace . XMLDocTypeWhitespace)
-    , conv xmldoctypepublicpublicid (onXMLDocTypePublicPublicIDStrEnd . XMLDocTypePublicPublicID)
+    , copen '"' (pure XMLDocTypePublicPublicIDDoubleQuoteStrStart)
+    , copen '\'' (pure XMLDocTypePublicPublicIDSingleQuoteStrStart)
     ]
 
 --------------------------------------------------------------------------------
@@ -907,7 +918,8 @@ xmlDocTypePublicPublicIDAndWhiteSpaceAfter : DFA q XMLSz XMLSTCK
 xmlDocTypePublicPublicIDAndWhitespaceAfter =
   dfa
     [ conv whitespace (onXMLDocTypeAfterPublicPublicIDWhitespace . XMLDocTypeWhitespace)
-    , conv xmldoctypepublicsystemid (onXMLDocTypePublicSystemIDStrEnd . XMLDocTypePublicSystemID)
+    , copen '"' (pure XMLDocTypePublicSystemIDDoubleQuoteStrStart)
+    , copen '\'' (pure XMLDocTypePublicSystemIDSingleQuoteStrStart)
     ]
 
 --------------------------------------------------------------------------------
@@ -962,11 +974,17 @@ xmlSteps =
     , E XMLDocTypeAfterNameWhitespaceE xmlDocTypeNameAndWhitespaceAfter
     , E XMLDocTypeSystemE xmlDocTypeSystemAfter
     , E XMLDocTypeAfterSystemWhitespaceE xmlDocTypeSystemAndWhitespaceAfter
+    , E XMLDocTypeSystemURIDoubleQuoteStrStart xmlDocTypeSystemURIDoubleQuoteStr
+    , E XMLDocTypeSystemURISingleQuoteStrStart xmlDocTypeSystemURISingleQuoteStr
     , E XMLDocTypePublicE xmlDocTypePublicAfter
     , E XMLDocTypeAfterPublicWhitespaceE xmlDocTypePublicAndWhitespaceAfter
+    , E XMLDocTypePublicPublicIDDoubleQuoteStrStart xmlDocTypePublicPublicIDDoubleQuoteStr
+    , E XMLDocTypePublicPublicIDSingleQuoteStrStart xmlDocTypePublicPublicIDSingleQuoteStr
     , E XMLDocTypeSystemURIE xmlDocTypeSystemURIAfter
     , E XMLDocTypePublicPublicIDE xmlDocTypePublicPublicIDAfter
     , E XMLDocTypePublicPublicIDAndWhitespaceE xmlDocTypePublicPublicIDAndWhitespaceAfter
+    , E XMLDocTypePublicSystemIDDoubleQuoteStrStart xmlDocTypePublicSystemIDDoubleQuoteStr
+    , E XMLDocTypePublicSystemIDSingleQuoteStrStart xmlDocTypePublicSystemIDSingleQuoteStr
     , E XMLDocTypePublicSystemIDE xmlDocTypePublicSystemIDAfter
       -- After DocType - optional (comments and processing instructions)
     , E XMLPostDocTypeStart xmlPostDocTypeStart
