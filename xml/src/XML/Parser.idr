@@ -384,8 +384,8 @@ xmlinit = T1.do
 xmlErr : Arr32 XMLSz (XMLSTCK q -> F1 q (BoundedErr Void))
 xmlErr =
   arr32 XMLSz (unexpected [])
-    [ E XMLBroken $ unexpected ["character other than '>'"]
-    , E XMLEmpty $ unexpected ["sequence data"]
+    [ E XMLEmpty $ unexpected ["no root element"]
+    , E XMLMismatchedStartEndTag $ unexpected ["start/end tag don't match"]
     ]
 
 --------------------------------------------------------------------------------
@@ -642,6 +642,24 @@ xmlPostDocTypeMiscProcessingInstructionDataStr =
 --------------------------------------------------------------------------------
 --          State Transitions and DFAs - root element
 --------------------------------------------------------------------------------
+
+onXMLElementEndTagStrEnd : (x : XMLSTCK q) => ByteString -> F1 q XMLST
+onXMLElementEndTagStrEnd v =
+  read1 x.xmlelementstack >>= \case
+    (sv :< (a, b) :< (c, d)) =>
+      case v == c of
+        True  => T1.do
+          write1 x.xmlelementstack (sv :< (a, b :< d)) >> pure XMLElementEndTagE
+        False =>
+          pure XMLMismatchedStartEndTag
+    (Lin :< (a, b))          =>
+      case v == a of
+        True  => T1.do
+          write1 x.xmlrootelement (sv :< (a, b :< d)) >> pure XMLElementEndTagE
+        False =>
+          pure XMLMismatchedStartEndTag
+    _                        =>
+      pure XMLMismatchedStartEndTag
 
 --------------------------------------------------------------------------------
 --          State Transitions and DFAs - post root element misc
@@ -1031,22 +1049,3 @@ xml = P XMLIni xmlinit xmlSteps snocChunk xmlErr xmlEOI
 export %inline
 parseXML : Origin -> String -> Either (ParseError Void) XMLDocument
 parseXML = parseString xml
-
---------------------------------------------------------------------------------
---          Streaming
---------------------------------------------------------------------------------
-
-streamXML :  String
-          -> AsyncPull Poll Void [ParseError Void, Errno] ()
-streamXML pth =
-     readBytes pth
-  |> streamParse xml (FileSrc pth)
-  |> C.count
-  |> printLnTo Stdout
-
-streamXMLDocuments :  AsyncPull Poll String [ParseError Void, Errno] ()
-                   -> AsyncPull Poll Void [ParseError Void, Errno] ()
-streamXMLDocuments pths =
-     flatMap pths (\p => readBytes p |> streamParse xml (FileSrc p))
-  |> C.count
-  |> printLnTo Stdout
