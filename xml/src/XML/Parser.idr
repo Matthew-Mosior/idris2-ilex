@@ -655,7 +655,7 @@ onXMLElementEndTagStrEnd v =
     (Lin :< (a, b))          =>
       case v == a of
         True  => T1.do
-          write1 x.xmlrootelement (sv :< (a, b :< d)) >> pure XMLElementEndTagE
+          write1 x.xmlrootelement (Lin :< (a, b :< d)) >> pure XMLElementEndTagE
         False =>
           pure XMLMismatchedStartEndTag
     _                        =>
